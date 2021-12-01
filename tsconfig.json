@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "rootDir": "ts",
+    "outDir": "public/dist",
+    "target": "es6",
+    "lib": ["es2017", "dom"],
+    "types": ["@webgpu/types", "node"],
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "strict": true,
+    "sourceMap": true
+  },
+  "exclude": ["node_modules"]
+}
