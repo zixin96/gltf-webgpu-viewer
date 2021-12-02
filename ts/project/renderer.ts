@@ -91,6 +91,10 @@ export default class Renderer {
     // console.log(view);
     const resourceLoader = view.createResourceLoader();
     //console.log(resourceLoader);
+    const state = view.createState();
+    // In Khronos, when IBL is turned off, directional lights kick in immediately
+    state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
+    // console.log(state);
 
     // 🔺 Buffers
     const createBuffer = (arr: Float32Array | Uint16Array, usage: number) => {
