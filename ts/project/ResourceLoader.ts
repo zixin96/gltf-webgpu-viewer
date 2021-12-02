@@ -1,18 +1,20 @@
 import axios from "axios";
 import { glTF } from "./gltf/glTF";
 import { gltfLoader } from "./gltf/gltfLoader";
+import { GltfView } from "./GltfView";
+
 /**
  * ResourceLoader can be used to load resources for the GltfState
  * that are then used to display the loaded data with GltfView
  */
 class ResourceLoader {
-  view: any;
+  view: GltfView;
   /**
    * ResourceLoader class that provides an interface to load resources into
    * the view. Typically this is created with GltfView.createResourceLoader()
    * @param view the GltfView for which the resources are loaded
    */
-  constructor(view: any) {
+  constructor(view: GltfView) {
     this.view = view;
   }
 

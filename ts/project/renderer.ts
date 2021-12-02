@@ -55,8 +55,6 @@ export default class Renderer {
     // before you start rendering, load gltf and stuff
     if (await this.initializeAPI()) {
       this.resizeBackings();
-      const view = new GltfView(this.context);
-      console.log(view);
       await this.initializeResources();
       this.render();
     }
@@ -89,6 +87,11 @@ export default class Renderer {
 
   // 🍱 Initialize resources to render triangle (buffers, shaders, pipeline)
   async initializeResources() {
+    const view = new GltfView(this.context);
+    // console.log(view);
+    const resourceLoader = view.createResourceLoader();
+    //console.log(resourceLoader);
+
     // 🔺 Buffers
     const createBuffer = (arr: Float32Array | Uint16Array, usage: number) => {
       // 📏 Align to 4 bytes (thanks @chrimsonite)
