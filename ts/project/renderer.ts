@@ -1,4 +1,5 @@
 import { triangleShaders } from "./shaders";
+import { GltfView } from "./GltfView";
 
 // prettier-ignore
 // 📈 Position Vertex Buffer Data
@@ -51,8 +52,11 @@ export default class Renderer {
 
   // 🏎️ Start the rendering engine
   async start() {
+    // before you start rendering, load gltf and stuff
     if (await this.initializeAPI()) {
       this.resizeBackings();
+      const view = new GltfView(this.context);
+      console.log(view);
       await this.initializeResources();
       this.render();
     }

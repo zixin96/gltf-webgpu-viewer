@@ -27,3 +27,13 @@ export class triangleShaders {
     return { vertex, fragment };
   }
 }
+
+export class rawGltfShaders {
+  public static primitiveVertexShader() {
+    return ``;
+  }
+
+  public static pbrFragmentShader() {
+    return ``;
+  }
+}
