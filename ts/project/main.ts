@@ -1,6 +1,7 @@
 import Renderer from "./renderer";
 import { CANVAS_SIZE } from "./constants";
 import { GltfView } from "./GltfView";
+import { UIModel } from "./UIModel";
 
 async function main() {
   const canvas = document.getElementById("gfx") as HTMLCanvasElement;
@@ -9,6 +10,7 @@ async function main() {
   const view = new GltfView(device);
   const resourceLoader = view.createResourceLoader();
   const state = view.createState();
+  const uiModel = new UIModel();
   // In Khronos, when IBL is turned off, directional lights kick in immediately
   state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
   // Here, we hardcode box.gltf to load box
@@ -30,10 +32,46 @@ async function main() {
     canvas.width = canvas.height = CANVAS_SIZE;
     // ! Attention: camera spec is dynamically set based on canvas's aspect ratio
     // ! and scene extent. If no object present in the scene, check here!!!
-    // ! we may not choose to use userCamera
     state.userCamera.aspectRatio = canvas.width / canvas.height;
     state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
   }
+  // Only redraw glTF view upon user inputs, or when an animation (not supported for now) is playing.
+  let redraw = false;
+  const listenForRedraw = (stream: any) =>
+    stream.subscribe(() => (redraw = true));
+
+  uiModel.orbit.subscribe((orbit: any) => {
+    if (state.cameraIndex === undefined) {
+      state.userCamera.orbit(orbit.deltaPhi, orbit.deltaTheta);
+    }
+  });
+  listenForRedraw(uiModel.orbit);
+
+  uiModel.pan.subscribe((pan: any) => {
+    if (state.cameraIndex === undefined) {
+      state.userCamera.pan(pan.deltaX, -pan.deltaY);
+    }
+  });
+  listenForRedraw(uiModel.pan);
+
+  uiModel.zoom.subscribe((zoom: any) => {
+    if (state.cameraIndex === undefined) {
+      state.userCamera.zoomBy(zoom.deltaZoom);
+    }
+  });
+  listenForRedraw(uiModel.zoom);
+
+  const update = () => {
+    if (redraw) {
+      // view.renderFrame(state, canvas.width, canvas.height);
+      redraw = false;
+    }
+
+    window.requestAnimationFrame(update);
+  };
+
+  // After this start executing animation loop.
+  window.requestAnimationFrame(update);
 }
 
 main();

@@ -300,6 +300,10 @@ function stringHash(str: any, seed = 0) {
   return hash;
 }
 
+function clamp(number: any, min: any, max: any) {
+  return Math.min(Math.max(number, min), max);
+}
+
 export {
   fromKeys,
   initGlForMembers,
@@ -313,4 +317,5 @@ export {
   getSceneExtents,
   UniformStruct,
   stringHash,
+  clamp,
 };

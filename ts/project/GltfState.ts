@@ -6,7 +6,7 @@ class GltfState {
   /** loaded environment data @see ResourceLoader.loadEnvironment */
   environment: any;
   /** user camera @see UserCamera, convenient camera controls */
-  userCamera: any;
+  userCamera: UserCamera;
   /** gltf scene that is visible in the view */
   sceneIndex: any;
   /**
