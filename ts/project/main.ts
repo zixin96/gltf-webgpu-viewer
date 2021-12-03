@@ -63,7 +63,7 @@ async function main() {
 
   const update = () => {
     if (redraw) {
-      // view.renderFrame(state, canvas.width, canvas.height);
+      view.renderFrame(state, canvas.width, canvas.height);
       redraw = false;
     }
 

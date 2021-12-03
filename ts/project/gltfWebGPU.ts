@@ -1,53 +1,14 @@
-// ! what should GL be in webGPU???
-/*
-let GL = {
-  BYTE: 5120,
-  BYTE: 5120,
-  BYTE: 5120,
-  BYTE: 5120,
-  BYTE: 5120,
-  BYTE: 5120,
-  BYTE: 5120,
-};
-*/
 class gltfWebGPU {
-  // ⚙️ API Data Structures
-  adapter!: GPUAdapter;
+  // 💻 Logical Device
   device!: GPUDevice;
+  // 📦 Queue
   queue!: GPUQueue;
 
   vertexBuffers: any;
 
   constructor(device: GPUDevice) {
     this.device = device;
-    // if (GL === undefined) {
-    //   GL = context;
-    // }
-  }
-
-  // ! Where to call this???
-  async initializeAPI(): Promise<boolean> {
-    try {
-      // 🏭 Entry to WebGPU
-      const entry: GPU = navigator.gpu;
-      if (!entry) {
-        return false;
-      }
-
-      // 🔌 Physical Device Adapter
-      this.adapter = (await entry.requestAdapter()) as GPUAdapter;
-
-      // 💻 Logical Device
-      this.device = await this.adapter.requestDevice();
-
-      // 📦 Queue
-      this.queue = this.device.queue;
-    } catch (e) {
-      console.error(e);
-      return false;
-    }
-
-    return true;
+    this.queue = this.device.queue;
   }
 
   /**
