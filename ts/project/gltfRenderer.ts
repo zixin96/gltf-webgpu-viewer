@@ -226,7 +226,7 @@ class gltfRenderer {
       context.bindTexture(context.TEXTURE_2D, null);
 
       // ! create 2 render buffers
-      // ? why do we need render buffers?
+      // ? why do we need render buffers? Render buffers are for MSAA and transmissive materials
       this.colorRenderBuffer = context.createRenderbuffer();
       context.bindRenderbuffer(context.RENDERBUFFER, this.colorRenderBuffer);
       context.renderbufferStorageMultisample(
