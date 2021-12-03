@@ -256,28 +256,28 @@ function getExtentsFromAccessor(
   outMin: vec3,
   outMax: vec3
 ) {
-  // const boxMin = vec3.create();
-  // let min = jsToGl(accessor.min);
-  // if (accessor.normalized) {
-  //   vec3.normalize(min, min);
-  // }
-  // vec3.transformMat4(boxMin, min, worldTransform);
-  // const boxMax = vec3.create();
-  // let max = jsToGl(accessor.max);
-  // if (accessor.normalized) {
-  //   vec3.normalize(max, max);
-  // }
-  // vec3.transformMat4(boxMax, max, worldTransform);
-  // const center = vec3.create();
-  // vec3.add(center, boxMax, boxMin);
-  // vec3.scale(center, center, 0.5);
-  // const centerToSurface = vec3.create();
-  // vec3.sub(centerToSurface, boxMax, center);
-  // const radius = vec3.length(centerToSurface);
-  // for (const i of [0, 1, 2]) {
-  //   outMin[i] = center[i] - radius;
-  //   outMax[i] = center[i] + radius;
-  // }
+  const boxMin = vec3.create();
+  let min = jsToGl(accessor.min) as vec3;
+  if (accessor.normalized) {
+    vec3.normalize(min, min);
+  }
+  vec3.transformMat4(boxMin, min, worldTransform);
+  const boxMax = vec3.create();
+  let max = jsToGl(accessor.max) as vec3;
+  if (accessor.normalized) {
+    vec3.normalize(max, max);
+  }
+  vec3.transformMat4(boxMax, max, worldTransform);
+  const center = vec3.create();
+  vec3.add(center, boxMax, boxMin);
+  vec3.scale(center, center, 0.5);
+  const centerToSurface = vec3.create();
+  vec3.sub(centerToSurface, boxMax, center);
+  const radius = vec3.length(centerToSurface);
+  for (const i of [0, 1, 2]) {
+    outMin[i] = center[i] - radius;
+    outMax[i] = center[i] + radius;
+  }
 }
 
 // marker interface used to for parsing the uniforms

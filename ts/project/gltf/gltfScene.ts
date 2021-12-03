@@ -30,11 +30,13 @@ class gltfScene extends GltfObject {
 
   /**
    * Recursively apply transformation based on scene graph hierarchy
+   * It will create worldTransform, inverseWorldTransform, and normalMatrix
+   * and store them in this node.
    * @param gltf
    * @param rootTransform
    */
-  applyTransformHierarchy(gltf: any, rootTransform = mat4.create()) {
-    function applyTransform(gltf: any, node: gltfNode, parentTransform: any) {
+  applyTransformHierarchy(gltf: glTF, rootTransform = mat4.create()) {
+    function applyTransform(gltf: glTF, node: gltfNode, parentTransform: mat4) {
       mat4.multiply(
         node.worldTransform,
         parentTransform,

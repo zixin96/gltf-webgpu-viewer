@@ -1,8 +1,8 @@
 import { UserCamera } from "./gltf/UserCamera";
-
+import { glTF } from "./gltf/glTF";
 class GltfState {
-  /** loaded gltf data @see ResourceLoader.loadGltf */
-  gltf: any;
+  // gltf is loaded by ResourceLoader::loadGltf
+  gltf: glTF | undefined;
   /** loaded environment data @see ResourceLoader.loadEnvironment */
   environment: any;
   /** user camera @see UserCamera, convenient camera controls */

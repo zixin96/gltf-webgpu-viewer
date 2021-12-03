@@ -135,18 +135,26 @@ class gltfRenderer {
 
   init(state: any) {
     const context = this.webGPU.context;
+    // ! Get number of samples to take for multisample render buffer
     const maxSamples = 8;
     const samples = 8;
 
     if (!this.initialized) {
+      // ! set pixel storage modes: no color space conversion
       // context.pixelStorei(GL.UNPACK_COLORSPACE_CONVERSION_WEBGL, GL.NONE);
+      // ! enable DEPTH_TEST: Activates depth comparisons and updates to the depth buffer.
       // context.enable(GL.DEPTH_TEST);
+      // ! depth function used: pass if the incoming value is less than or equal to the depth buffer value
       // context.depthFunc(GL.LEQUAL);
+      // ! RGBA can all be written to the frame buffer
       context.colorMask(true, true, true, true);
+      // ! when depth buffer is cleared, it is set to 1.0
       context.clearDepth(1.0);
-
+      // ! create a WebGLTexture object
       this.opaqueRenderTexture = context.createTexture();
+      // ! bind opaqueRenderTexture to TEXTURE_2D
       context.bindTexture(context.TEXTURE_2D, this.opaqueRenderTexture);
+      // ! set 4 parameters: min/mag fitler, s/t address mode to the desired value
       context.texParameteri(
         context.TEXTURE_2D,
         context.TEXTURE_MIN_FILTER,
@@ -167,19 +175,21 @@ class gltfRenderer {
         context.TEXTURE_MAG_FILTER,
         context.NEAREST
       );
+      // ! put the image into this texture
       context.texImage2D(
         context.TEXTURE_2D,
-        0,
-        context.RGBA,
-        this.opaqueFramebufferWidth,
-        this.opaqueFramebufferHeight,
-        0,
-        context.RGBA,
-        context.UNSIGNED_BYTE,
-        null
+        0, // LOD
+        context.RGBA, // internal format
+        this.opaqueFramebufferWidth, // width of the texture
+        this.opaqueFramebufferHeight, // height of the texture
+        0, // the width of the border. Must be 0.
+        context.RGBA, // same as internal format
+        context.UNSIGNED_BYTE, // the data type of the texel data:8 bits per channel for gl.RGBA
+        null // ? why is this null? when do we put the image into the buffer?
       );
       context.bindTexture(context.TEXTURE_2D, null);
 
+      // ! do all the above, but this time for depth texture
       this.opaqueDepthTexture = context.createTexture();
       context.bindTexture(context.TEXTURE_2D, this.opaqueDepthTexture);
       context.texParameteri(
@@ -215,6 +225,8 @@ class gltfRenderer {
       );
       context.bindTexture(context.TEXTURE_2D, null);
 
+      // ! create 2 render buffers
+      // ? why do we need render buffers?
       this.colorRenderBuffer = context.createRenderbuffer();
       context.bindRenderbuffer(context.RENDERBUFFER, this.colorRenderBuffer);
       context.renderbufferStorageMultisample(
@@ -229,21 +241,22 @@ class gltfRenderer {
       context.bindRenderbuffer(context.RENDERBUFFER, this.depthRenderBuffer);
       context.renderbufferStorageMultisample(
         context.RENDERBUFFER,
-        samples,
-        context.DEPTH_COMPONENT16,
-        this.opaqueFramebufferWidth,
+        samples, // the number of samples to be used for the renderbuffer storage
+        context.DEPTH_COMPONENT16, // the internal format of the renderbuffer.
+        this.opaqueFramebufferWidth, // same as texture and depth buffer
         this.opaqueFramebufferHeight
       );
 
       this.samples = samples;
 
+      // ! create framebuffer for render buffers
       this.opaqueFramebufferMSAA = context.createFramebuffer();
       context.bindFramebuffer(context.FRAMEBUFFER, this.opaqueFramebufferMSAA);
       context.framebufferRenderbuffer(
         context.FRAMEBUFFER,
-        context.COLOR_ATTACHMENT0,
+        context.COLOR_ATTACHMENT0, // color buffer
         context.RENDERBUFFER,
-        this.colorRenderBuffer
+        this.colorRenderBuffer // object to attach.
       );
       context.framebufferRenderbuffer(
         context.FRAMEBUFFER,
@@ -252,6 +265,7 @@ class gltfRenderer {
         this.depthRenderBuffer
       );
 
+      // ! create framebuffer for texture
       this.opaqueFramebuffer = context.createFramebuffer();
       context.bindFramebuffer(context.FRAMEBUFFER, this.opaqueFramebuffer);
       context.framebufferTexture2D(
@@ -307,6 +321,7 @@ class gltfRenderer {
     if (this.currentWidth !== width || this.currentHeight !== height) {
       this.currentHeight = height;
       this.currentWidth = width;
+      // ! WebGPU: this.passEncoder.setViewport
       this.webGPU.context.viewport(0, 0, width, height);
     }
   }
@@ -671,7 +686,7 @@ class gltfRenderer {
     //   this.applyLights(state.gltf);
     // }
 
-    // update model dependant matrices once per node
+    // update model dependant matrices once per node (transform matrices have already been calculated)
     this.shader.updateUniform("u_ViewProjectionMatrix", viewProjectionMatrix);
     this.shader.updateUniform("u_ModelMatrix", node.worldTransform);
     this.shader.updateUniform("u_NormalMatrix", node.normalMatrix, false);
@@ -685,12 +700,14 @@ class gltfRenderer {
     // ! no animation for now
     // this.updateAnimationUniforms(state, node, primitive);
 
+    // ! specifies whether polygons are front- or back-facing by setting a winding orientation
     if (mat4.determinant(node.worldTransform) < 0.0) {
       // this.webGPU.context.frontFace(GL.CW); // ! figure out what GL should be
     } else {
       // this.webGPU.context.frontFace(GL.CCW); // ! figure out what GL should be
     }
 
+    // ! enable or disable culling of polygons
     if (material.doubleSided) {
       // this.webGPU.context.disable(GL.CULL_FACE); // ! figure out what GL should be
     } else {
