@@ -11,8 +11,6 @@ let GL = {
 };
 */
 class gltfWebGPU {
-  context: GPUCanvasContext;
-
   // ⚙️ API Data Structures
   adapter!: GPUAdapter;
   device!: GPUDevice;
@@ -20,8 +18,8 @@ class gltfWebGPU {
 
   vertexBuffers: any;
 
-  constructor(context: GPUCanvasContext) {
-    this.context = context;
+  constructor(device: GPUDevice) {
+    this.device = device;
     // if (GL === undefined) {
     //   GL = context;
     // }

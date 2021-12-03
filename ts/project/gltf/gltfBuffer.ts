@@ -21,12 +21,9 @@ class gltfBuffer extends GltfObject {
 
   /**
    * load raw binary data into this.buffer
-   * @param gltf THIS IS NOT USED since we are using https request
-   * @param additionalFiles
    * @returns
    */
-  // load(gltf: glTF, additionalFiles = undefined) {
-  load(additionalFiles = undefined) {
+  load() {
     if (this.buffer !== undefined) {
       console.error("buffer has already been loaded");
       return;
@@ -34,11 +31,7 @@ class gltfBuffer extends GltfObject {
 
     const self = this;
     return new Promise<void>(function (resolve) {
-      if (
-        !self.setBufferFromFiles(additionalFiles, resolve) &&
-        /*!self.setBufferFromUri(gltf, resolve)*/
-        !self.setBufferFromUri(resolve)
-      ) {
+      if (!self.setBufferFromUri(resolve)) {
         console.error("Was not able to resolve buffer with uri '%s'", self.uri);
         resolve();
       }
@@ -47,19 +40,14 @@ class gltfBuffer extends GltfObject {
 
   /**
    * Given a uri (Box0.bin), put the binary raw data into this.buffer
-   * @param gltf
    * @param callback
    * @returns
    */
-  // setBufferFromUri(gltf: glTF, callback: any) {
   setBufferFromUri(callback: any) {
     if (this.uri === undefined) {
       return false;
     }
-
     const self = this;
-    // * Note: here, Khronos uses axios.get('assets/models/2.0/Box/glTF/Box0.bin')
-    // * to get to the raw file.
     // prefix with agile-hamlet to avoid CORS error
     axios
       .get(
@@ -70,14 +58,6 @@ class gltfBuffer extends GltfObject {
         self.buffer = response.data;
         callback();
       });
-    return true;
-  }
-
-  // ! Note: this function will be skipped (return false) in box
-  setBufferFromFiles(files: any, callback: any) {
-    if (this.uri === undefined || files === undefined) {
-      return false;
-    }
     return true;
   }
 }

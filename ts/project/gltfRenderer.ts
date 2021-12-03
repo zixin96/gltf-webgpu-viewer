@@ -58,13 +58,13 @@ class gltfRenderer {
 
   preparedScene: any;
 
-  constructor(context: any) {
+  constructor(device: GPUDevice) {
     this.shader = undefined; // current shader
 
     this.currentWidth = 0;
     this.currentHeight = 0;
 
-    this.webGPU = new gltfWebGPU(context);
+    this.webGPU = new gltfWebGPU(device);
     // ! after this line, we should have GL set, but currently we don't know
     // ! what GL should be
     this.initialized = false;

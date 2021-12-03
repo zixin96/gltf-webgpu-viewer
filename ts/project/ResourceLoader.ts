@@ -25,7 +25,6 @@ class ResourceLoader {
    * @param externalFiles
    */
   async loadGltf(gltfFile: string, externalFiles: any = undefined) {
-    let buffers = undefined;
     let json = undefined;
     let filename = "";
     if (typeof gltfFile === "string") {
@@ -49,7 +48,7 @@ class ResourceLoader {
     // console.log(filename);
     const gltf = new glTF(filename);
     gltf.fromJson(json); // after this function, gltf has been populated wtih glTFXXX objects. Node world transform has been set to identity matrix
-    await gltfLoader.load(gltf, this.view.context, buffers);
+    await gltfLoader.load(gltf, this.view.device);
     return gltf;
   }
 }

@@ -50,9 +50,9 @@ function fromKeys(target: any, jsonObj: any, ignore = []) {
  * ! Needs clarification
  * @param gltfObj
  * @param gltf
- * @param webGPUContext
+ * @param device
  */
-function initGlForMembers(gltfObj: any, gltf: any, webGPUContext: any) {
+function initGlForMembers(gltfObj: any, gltf: any, device: GPUDevice) {
   // console.log("gltfObj: ", gltfObj);
   // console.log("gltf: ", gltf);
   // console.log("webGlContext: ", webGlContext);
@@ -64,7 +64,7 @@ function initGlForMembers(gltfObj: any, gltf: any, webGPUContext: any) {
       continue;
     }
     if (member.initGl !== undefined) {
-      member.initGl(gltf, webGPUContext);
+      member.initGl(gltf, device);
     }
     if (Array.isArray(member)) {
       for (const element of member) {
@@ -73,7 +73,7 @@ function initGlForMembers(gltfObj: any, gltf: any, webGPUContext: any) {
           element !== undefined &&
           element.initGl !== undefined
         ) {
-          element.initGl(gltf, webGPUContext);
+          element.initGl(gltf, device);
         }
       }
     }

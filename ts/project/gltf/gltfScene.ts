@@ -1,13 +1,13 @@
 import { mat4 } from "gl-matrix";
 import { gltfNode } from "./gltfNode";
 import { GltfObject } from "./GltfObject";
+import { glTF } from "./glTF";
 
 class gltfScene extends GltfObject {
   nodes: any;
   name: any;
-  imageBasedLight: any;
   /**
-   * nodes, name, imageBasedLight will be empty or undefined
+   * nodes, name, will be empty or undefined
    * @param nodes
    * @param name
    */
@@ -15,27 +15,17 @@ class gltfScene extends GltfObject {
     super();
     this.nodes = nodes;
     this.name = name;
-
-    // non gltf
-    this.imageBasedLight = undefined;
   }
 
   /**
    * Override GltfObject's initGl()
    * @param gltf established glTF object
-   * @param webGPUContext
+   * @param device
    */
-  initGl(gltf: any, webGPUContext: any) {
-    super.initGl(gltf, webGPUContext);
+  initGl(gltf: glTF, device: GPUDevice) {
+    super.initGl(gltf, device);
 
-    // ! the following is skipped (for sample box)
-    if (
-      this.extensions !== undefined &&
-      this.extensions.KHR_lights_image_based !== undefined
-    ) {
-      const index = this.extensions.KHR_lights_image_based.imageBasedLight;
-      this.imageBasedLight = gltf.imageBasedLights[index];
-    }
+    // * In kronos, this.imageBasedLight (KHR_lights_image_based) was assigned here
   }
 
   /**

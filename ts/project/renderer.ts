@@ -87,7 +87,7 @@ export default class Renderer {
 
   // 🍱 Initialize resources to render triangle (buffers, shaders, pipeline)
   async initializeResources() {
-    const view = new GltfView(this.context);
+    const view = new GltfView(this.device);
     // console.log(view);
     const resourceLoader = view.createResourceLoader();
     //console.log(resourceLoader);

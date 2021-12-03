@@ -58,8 +58,8 @@ class gltfTextureInfo {
     this.extensions = undefined;
   }
 
-  initGl(gltf: any, webGPUContext: any) {
-    initGlForMembers(this, gltf, webGPUContext);
+  initGl(gltf: any, device: GPUDevice) {
+    initGlForMembers(this, gltf, device);
   }
 }
 

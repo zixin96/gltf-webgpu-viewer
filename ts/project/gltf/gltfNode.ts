@@ -18,7 +18,7 @@ class gltfNode extends GltfObject {
   inverseWorldTransform: any;
   normalMatrix: any;
   light: any;
-  changed: any;
+  changed: any; // ? Why do we need this?
 
   animationRotation: any;
   animationTranslation: any;

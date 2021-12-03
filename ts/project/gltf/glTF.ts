@@ -73,10 +73,11 @@ class glTF extends GltfObject {
 
   /**
    * ? This might be the top-level call to initialize all GL for this glTF
-   * @param webGPUContext
+   * Called twice for box
+   * @param device
    */
-  initGl(webGPUContext: any) {
-    initGlForMembers(this, this, webGPUContext);
+  initGl(device: GPUDevice) {
+    initGlForMembers(this, this, device);
   }
 
   /**

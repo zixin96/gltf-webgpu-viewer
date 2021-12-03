@@ -5,16 +5,16 @@ import { ResourceLoader } from "./ResourceLoader";
  * GltfView represents a view on a gltf, e.g. in a canvas
  */
 class GltfView {
-  context: GPUCanvasContext;
+  device: GPUDevice;
   renderer: gltfRenderer;
   /**
    * GltfView representing one WebGPU context or in other words one
    * 3D rendering of the Gltf.
    * @param context
    */
-  constructor(context: GPUCanvasContext) {
-    this.context = context;
-    this.renderer = new gltfRenderer(this.context);
+  constructor(device: GPUDevice) {
+    this.device = device;
+    this.renderer = new gltfRenderer(this.device);
   }
 
   /**

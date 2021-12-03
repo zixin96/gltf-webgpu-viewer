@@ -21,10 +21,10 @@ class GltfObject {
   /**
    * Initialize gl for this GltfObject
    * @param gltf
-   * @param webGPUContext
+   * @param device
    */
-  initGl(gltf: any, webGPUContext: any) {
-    initGlForMembers(this, gltf, webGPUContext);
+  initGl(gltf: any, device: GPUDevice) {
+    initGlForMembers(this, gltf, device);
   }
 }
 
