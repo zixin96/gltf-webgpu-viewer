@@ -20,49 +20,36 @@ class ResourceLoader {
 
   /**
    * loadGltf asynchronously and create resources for rendering
+   * FIXME: currently, we only support loading gltf file directly from https
    * @param gltfFile
    * @param externalFiles
    */
-  async loadGltf(gltfFile: any, externalFiles: any) {
-    let isGlb = undefined;
+  async loadGltf(gltfFile: string, externalFiles: any = undefined) {
     let buffers = undefined;
     let json = undefined;
-    let data = undefined;
     let filename = "";
     if (typeof gltfFile === "string") {
-      let response = await axios.get(
-        "https://agile-hamlet-83897.herokuapp.com/https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/cf4ce3202cec1ee2fa39cb9bcb764c0b8655703c/2.0/Box/glTF/Box.gltf",
-        {
-          responseType: "json",
-        }
-      );
-      json = response.data;
-      data = response.data;
-      filename = gltfFile;
+      await axios
+        // FIXME: add error checking. What if URL is wrong?
+        .get(
+          `https://agile-hamlet-83897.herokuapp.com/https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/cf4ce3202cec1ee2fa39cb9bcb764c0b8655703c/2.0/Box/glTF/${gltfFile}`,
+          {
+            responseType: "json",
+          }
+        )
+        .then((response) => {
+          json = response.data;
+          filename = gltfFile;
+        });
     } else {
       console.error("Passed invalid type to loadGltf " + typeof gltfFile);
     }
 
-    if (isGlb) {
-      //   const glbParser = new GlbParser(data);
-      //   const glb = glbParser.extractGlbData();
-      //   json = glb.json;
-      //   buffers = glb.buffers;
-    }
-
+    // console.log(json);
+    // console.log(filename);
     const gltf = new glTF(filename);
-    // gltf.ktxDecoder = this.view.ktxDecoder;
-    //Make sure draco decoder instance is ready
-    gltf.fromJson(json);
-
-    // because the gltf image paths are not relative
-    // to the gltf, we have to resolve all image paths before that
-    // for (const image of gltf.images) {
-    //   image.resolveRelativePath(getContainingFolder(gltf.path));
-    // }
-
+    gltf.fromJson(json); // after this function, gltf has been populated wtih glTFXXX objects. Node world transform has been set to identity matrix
     await gltfLoader.load(gltf, this.view.context, buffers);
-
     return gltf;
   }
 }

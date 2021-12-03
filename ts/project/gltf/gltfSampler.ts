@@ -1,28 +1,26 @@
 import { GltfObject } from "./GltfObject";
-// import { GL } from "../gltfWebGPU"; // ! figure out what GL should be
 
 class gltfSampler extends GltfObject {
-  magFilter: any;
-  minFilter: any;
-  wrapS: any;
-  wrapT: any;
+  magFilter: GPUFilterMode;
+  minFilter: GPUFilterMode;
+  mipmapFilter: GPUFilterMode;
+  addressModeU: GPUAddressMode;
+  addressModeV: GPUAddressMode;
   name: any;
 
   constructor(
-    // magFilter = GL.LINEAR,
-    // minFilter = GL.LINEAR_MIPMAP_LINEAR,
-    // wrapS = GL.REPEAT,
-    // wrapT = GL.REPEAT
-    magFilter = undefined,
-    minFilter = undefined,
-    wrapS = undefined,
-    wrapT = undefined
+    magFilter = "linear" as GPUFilterMode,
+    minFilter = "linear" as GPUFilterMode,
+    mipmapFilter = "linear" as GPUFilterMode,
+    addressModeU = "repeat" as GPUAddressMode,
+    addressModeV = "repeat" as GPUAddressMode
   ) {
     super();
     this.magFilter = magFilter;
     this.minFilter = minFilter;
-    this.wrapS = wrapS;
-    this.wrapT = wrapT;
+    this.mipmapFilter = mipmapFilter;
+    this.addressModeU = addressModeU;
+    this.addressModeV = addressModeV;
     this.name = undefined;
   }
 

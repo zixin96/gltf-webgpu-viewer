@@ -1,16 +1,5 @@
 import { GltfObject } from "./GltfObject";
-// import { GL } from "../gltfWebGPU";
-// ! change THIS! temp solution
-const GL = {
-  BYTE: 0,
-  UNSIGNED_BYTE: 0,
 
-  SHORT: 0,
-  UNSIGNED_SHORT: 0,
-
-  UNSIGNED_INT: 0,
-  FLOAT: 0,
-};
 class gltfAccessor extends GltfObject {
   bufferView: any;
   byteOffset: any;
@@ -97,51 +86,50 @@ class gltfAccessor extends GltfObject {
         );
       }
 
-      // ! figure out what GL is
-      // switch (this.componentType) {
-      //   case GL.BYTE:
-      //     this.typedView = new Int8Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      //   case GL.UNSIGNED_BYTE:
-      //     this.typedView = new Uint8Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      //   case GL.SHORT:
-      //     this.typedView = new Int16Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      //   case GL.UNSIGNED_SHORT:
-      //     this.typedView = new Uint16Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      //   case GL.UNSIGNED_INT:
-      //     this.typedView = new Uint32Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      //   case GL.FLOAT:
-      //     this.typedView = new Float32Array(
-      //       buffer.buffer,
-      //       byteOffset,
-      //       arrayLength
-      //     );
-      //     break;
-      // }
+      switch (this.componentType) {
+        case AccessorDataType.BYTE:
+          this.typedView = new Int8Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+        case AccessorDataType.UNSIGNED_BYTE:
+          this.typedView = new Uint8Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+        case AccessorDataType.SHORT:
+          this.typedView = new Int16Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+        case AccessorDataType.UNSIGNED_SHORT:
+          this.typedView = new Uint16Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+        case AccessorDataType.UNSIGNED_INT:
+          this.typedView = new Uint32Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+        case AccessorDataType.FLOAT:
+          this.typedView = new Float32Array(
+            buffer.buffer,
+            byteOffset,
+            arrayLength
+          );
+          break;
+      }
     }
 
     if (this.typedView === undefined) {
@@ -179,16 +167,15 @@ class gltfAccessor extends GltfObject {
   }
 
   getComponentSize(componentType: any) {
-    // GL.FLOAT === 5126 === FLOAT in glTF files
     switch (componentType) {
-      case GL.BYTE:
-      case GL.UNSIGNED_BYTE:
+      case AccessorDataType.BYTE:
+      case AccessorDataType.UNSIGNED_BYTE:
         return 1;
-      case GL.SHORT:
-      case GL.UNSIGNED_SHORT:
+      case AccessorDataType.SHORT:
+      case AccessorDataType.UNSIGNED_SHORT:
         return 2;
-      case GL.UNSIGNED_INT:
-      case GL.FLOAT:
+      case AccessorDataType.UNSIGNED_INT:
+      case AccessorDataType.FLOAT:
         return 4;
       default:
         return 0;
@@ -198,17 +185,17 @@ class gltfAccessor extends GltfObject {
   // ! Will NOT get executed in box
   static dequantize(typedArray: any, componentType: any) {
     switch (componentType) {
-      case GL.BYTE:
+      case AccessorDataType.BYTE:
         return new Float32Array(typedArray).map((c) =>
           Math.max(c / 127.0, -1.0)
         );
-      case GL.UNSIGNED_BYTE:
+      case AccessorDataType.UNSIGNED_BYTE:
         return new Float32Array(typedArray).map((c) => c / 255.0);
-      case GL.SHORT:
+      case AccessorDataType.SHORT:
         return new Float32Array(typedArray).map((c) =>
           Math.max(c / 32767.0, -1.0)
         );
-      case GL.UNSIGNED_SHORT:
+      case AccessorDataType.UNSIGNED_SHORT:
         return new Float32Array(typedArray).map((c) => c / 65535.0);
       default:
         return typedArray;
@@ -225,5 +212,16 @@ const CompononentCount = new Map([
   ["MAT3", 9],
   ["MAT4", 16],
 ]);
+
+// https://www.khronos.org/registry/glTF/specs/2.0/glTF-2.0.html
+// 3.6.2.2. Accessor Data Types
+const AccessorDataType = {
+  BYTE: 5120,
+  UNSIGNED_BYTE: 5121,
+  SHORT: 5122,
+  UNSIGNED_SHORT: 5123,
+  UNSIGNED_INT: 5125,
+  FLOAT: 5126,
+};
 
 export { gltfAccessor };

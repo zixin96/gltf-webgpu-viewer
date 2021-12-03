@@ -117,7 +117,7 @@ class glTF extends GltfObject {
     );
     this.variants = enforceVariantsUniqueness(this.variants);
 
-    this.materials.push(gltfMaterial.createDefault());
+    this.materials.push(gltfMaterial.createDefault()); // Note: here we create a extra default material even though in gltf file we only have one (for box)
     this.samplers.push(gltfSampler.createDefault());
 
     if (json.scenes !== undefined) {

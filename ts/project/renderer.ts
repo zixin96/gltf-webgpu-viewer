@@ -96,6 +96,14 @@ export default class Renderer {
     state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
     // console.log(state);
 
+    // * In Khronos, a pathProvider is created here containing all gltfModel path
+    // * e.g. Box: "assets/models/2.0/Box/glTF/Box.gltf"
+
+    // Here, we hardcode box.gltf to load box
+    // In loadGltf(), we use this string as part of a https request
+    // FIXME: user can choose which file to load
+    resourceLoader.loadGltf("Box.gltf");
+
     // 🔺 Buffers
     const createBuffer = (arr: Float32Array | Uint16Array, usage: number) => {
       // 📏 Align to 4 bytes (thanks @chrimsonite)
