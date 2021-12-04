@@ -1,111 +1,81 @@
+import { mat4, vec3 } from "gl-matrix";
+import { FOVY, NEAR_PLANE, FAR_PLANE } from "./constants";
+const createCamera = require("3d-view-controls");
+
 class gltfWebGPU {
-  // 💻 Logical Device
+  public static CameraPosition: vec3 = [2, 2, 4];
+  public static LookDirection: vec3 = [0, 0, 0];
+  public static UpDirection: vec3 = [0, 1, 0];
+  camera!: any;
+  vp!: any;
+  vMatrix!: any;
+  vpMatrix!: any;
+  eyePosition!: any;
+  lightPosition!: any;
+
+  vertexUniformBuffer!: any;
+
+  modelMatrix!: any;
+  rotation!: any;
+  normalMatrix!: any;
+
+  canvas!: HTMLCanvasElement;
+
+  // ⚙️ API Data Structures
   device!: GPUDevice;
-  // 📦 Queue
   queue!: GPUQueue;
 
-  vertexBuffers: any;
+  // 🎞️ Frame Backings
+  context!: GPUCanvasContext;
+  colorTexture!: GPUTexture;
+  colorTextureView!: GPUTextureView;
+  depthTexture!: GPUTexture;
+  depthTextureView!: GPUTextureView;
 
-  constructor(device: GPUDevice) {
+  // 🔺 Resources
+  positionBuffer!: GPUBuffer;
+  normalBuffer!: GPUBuffer;
+  indexBuffer!: GPUBuffer;
+  vertModule!: GPUShaderModule;
+  fragModule!: GPUShaderModule;
+  pipeline!: GPURenderPipeline;
+  sceneUniformBindGroup!: GPUBindGroup;
+  indexCount!: number;
+
+  commandEncoder!: GPUCommandEncoder;
+  passEncoder!: GPURenderPassEncoder;
+
+  // 🔮 support for glsl #version 450 and glsl es #version 310 and up
+  glslang: any;
+
+  constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
+    this.canvas = canvas;
     this.device = device;
     this.queue = this.device.queue;
+    this.glslang = glslang;
+    // ⛓️ Swapchain
+    if (!this.context) {
+      this.context = this.canvas.getContext(
+        "webgpu"
+      ) as unknown as GPUCanvasContext; // cast to unknown to avoid webpack error
+      const canvasConfig: GPUCanvasConfiguration = {
+        device: this.device,
+        format: "bgra8unorm",
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+      };
+      this.context.configure(canvasConfig);
+    }
+
+    const depthTextureDesc: GPUTextureDescriptor = {
+      size: [this.canvas.width, this.canvas.height, 1],
+      dimension: "2d",
+      format: "depth24plus-stencil8",
+      usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
+    };
+
+    this.depthTexture = this.device.createTexture(depthTextureDesc);
+    this.depthTextureView = this.depthTexture.createView();
   }
-
-  /**
-   *
-   * @param loc uniform texture location
-   * @param gltf
-   * @param textureInfo
-   * @param texSlot
-   * @returns
-   */
-  // setTexture(loc, gltf, textureInfo, texSlot) {
-  //   if (loc === -1) {
-  //     return false;
-  //   }
-
-  //   let gltfTex = gltf.textures[textureInfo.index];
-
-  //   if (gltfTex === undefined) {
-  //     console.warn("Texture is undefined: " + textureInfo.index);
-  //     return false;
-  //   }
-
-  //   const image = gltf.images[gltfTex.source];
-  //   if (image === undefined) {
-  //     console.warn("Image is undefined for texture: " + gltfTex.source);
-  //     return false;
-  //   }
-
-  //   if (gltfTex.glTexture === undefined) {
-  //     if (
-  //       image.mimeType === ImageMimeType.KTX2 ||
-  //       image.mimeType === ImageMimeType.GLTEXTURE
-  //     ) {
-  //       // these image resources are directly loaded to a GPU resource by resource loader
-  //       gltfTex.glTexture = image.image;
-  //     } else {
-  //       // other images will be uploaded in a later step
-  //       gltfTex.glTexture = this.context.createTexture();
-  //     }
-  //   }
-
-  //   this.context.activeTexture(GL.TEXTURE0 + texSlot);
-  //   this.context.bindTexture(gltfTex.type, gltfTex.glTexture);
-
-  //   this.context.uniform1i(loc, texSlot);
-
-  //   if (!gltfTex.initialized) {
-  //     const gltfSampler = gltf.samplers[gltfTex.sampler];
-
-  //     if (gltfSampler === undefined) {
-  //       console.warn("Sampler is undefined for texture: " + textureInfo.index);
-  //       return false;
-  //     }
-
-  //     this.context.pixelStorei(GL.UNPACK_FLIP_Y_WEBGL, false);
-
-  //     // upload images that are not directly loaded as GPU resource
-  //     if (
-  //       image.mimeType === ImageMimeType.PNG ||
-  //       image.mimeType === ImageMimeType.JPEG ||
-  //       image.mimeType === ImageMimeType.HDR
-  //     ) {
-  //       // the check `GL.SRGB8_ALPHA8 === undefined` is needed as at the moment node-gles does not define the full format enum
-  //       const internalformat =
-  //         textureInfo.linear || GL.SRGB8_ALPHA8 === undefined
-  //           ? GL.RGBA
-  //           : GL.SRGB8_ALPHA8;
-  //       this.context.texImage2D(
-  //         image.type,
-  //         image.miplevel,
-  //         internalformat,
-  //         GL.RGBA,
-  //         GL.UNSIGNED_BYTE,
-  //         image.image
-  //       );
-  //     }
-
-  //     this.setSampler(gltfSampler, gltfTex.type, textureInfo.generateMips);
-
-  //     if (textureInfo.generateMips) {
-  //       switch (gltfSampler.minFilter) {
-  //         case GL.NEAREST_MIPMAP_NEAREST:
-  //         case GL.NEAREST_MIPMAP_LINEAR:
-  //         case GL.LINEAR_MIPMAP_NEAREST:
-  //         case GL.LINEAR_MIPMAP_LINEAR:
-  //           this.context.generateMipmap(gltfTex.type);
-  //           break;
-  //         default:
-  //           break;
-  //       }
-  //     }
-
-  //     gltfTex.initialized = true;
-  //   }
-
-  //   return gltfTex.initialized;
-  // }
 
   createWebGPUBuffer(arr: Float32Array | Uint16Array, usage: number) {
     // 📏 Align to 4 bytes
@@ -124,6 +94,12 @@ class gltfWebGPU {
     return buffer;
   }
 
+  /**
+   * Create Indices Buffer
+   * @param gltf
+   * @param accessorIndex
+   * @returns
+   */
   setIndices(gltf: any, accessorIndex: any) {
     let gltfAccessor = gltf.accessors[accessorIndex];
 
@@ -132,32 +108,22 @@ class gltfWebGPU {
       if (data === undefined) {
         return false;
       }
+      // console.log("indices:", data);
       gltfAccessor.glBuffer = this.createWebGPUBuffer(
         data,
         GPUBufferUsage.INDEX
       );
-
-      // this.context.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, gltfAccessor.glBuffer);
-      // this.context.bufferData(GL.ELEMENT_ARRAY_BUFFER, data, GL.STATIC_DRAW);
+      this.indexBuffer = gltfAccessor.glBuffer;
+      this.indexCount = gltfAccessor.count;
     } else {
-      // this.context.bindBuffer(GL.ELEMENT_ARRAY_BUFFER, gltfAccessor.glBuffer);
+      // do nothing
     }
 
     return true;
   }
 
-  enableAttribute(gltf: any, attributeLocation: any, gltfAccessor: any) {
-    if (attributeLocation === -1) {
-      console.warn("Tried to access unknown attribute");
-      return false;
-    }
-
-    if (gltfAccessor.bufferView === undefined) {
-      console.warn("Tried to access undefined bufferview");
-      return true;
-    }
-
-    let gltfBufferView = gltf.bufferViews[gltfAccessor.bufferView];
+  setVerticesAttrib(gltf: any, attribute: any) {
+    const gltfAccessor = gltf.accessors[attribute.accessor];
 
     if (gltfAccessor.glBuffer === undefined) {
       let data = gltfAccessor.getTypedView(gltf);
@@ -168,130 +134,178 @@ class gltfWebGPU {
         data,
         GPUBufferUsage.VERTEX
       );
-
-      // this.context.bindBuffer(GL.ARRAY_BUFFER, gltfAccessor.glBuffer);
-      // this.context.bufferData(GL.ARRAY_BUFFER, data, GL.STATIC_DRAW);
+      if (attribute.attribute === "NORMAL") {
+        this.normalBuffer = gltfAccessor.glBuffer;
+      }
+      if (attribute.attribute === "POSITION") {
+        this.positionBuffer = gltfAccessor.glBuffer;
+      }
     } else {
-      // this.context.bindBuffer(GL.ARRAY_BUFFER, gltfAccessor.glBuffer);
+      // do nothing
     }
-
-    const attribDesc: GPUVertexAttribute = {
-      shaderLocation: attributeLocation, // [[location(attributeLocation)]]
-      offset: 0, // ! What should be the offset?
-      format: "float32x3",
-      // ! format probably needs to change based on gltfAccessor.getComponentCount(gltfAccessor.type) and gltfAccessor.componentType,
-    };
-
-    const bufferDesc: GPUVertexBufferLayout = {
-      attributes: [attribDesc],
-      arrayStride: gltfBufferView.byteStride,
-      stepMode: "vertex",
-    };
-
-    this.vertexBuffers.push(bufferDesc);
-
-    // ! bufferDesc needs to be passed into shader stages when we create GPUVertexState
-
-    // this.context.vertexAttribPointer(
-    //   attributeLocation,
-    //   gltfAccessor.getComponentCount(gltfAccessor.type),
-    //   gltfAccessor.componentType,
-    //   gltfAccessor.normalized,
-    //   gltfBufferView.byteStride,
-    //   0
-    // );
-    // this.context.enableVertexAttribArray(attributeLocation);
-
     return true;
   }
 
-  compileShader(shaderIdentifier: any, isVert: any, shaderSource: any) {
-    // ! error checking is needed
+  createVertexShaderModule() {
     const shaderModuleDesc = {
-      code: shaderSource,
+      code: `
+      [[block]] struct Uniforms {
+        u_ViewProjectionMatrix : mat4x4<f32>;
+        u_ModelMatrix : mat4x4<f32>;               
+        u_NormalMatrix : mat4x4<f32>;                
     };
-    const shaderModule = this.device.createShaderModule(shaderModuleDesc);
-    if (isVert) {
-      const vertex: GPUVertexState = {
-        module: shaderModule,
-        entryPoint: "main",
-        buffers: this.vertexBuffers,
-      };
-      return vertex;
-    } else {
-      const colorState: GPUColorTargetState = {
-        format: "bgra8unorm",
-      };
+    [[binding(0), group(0)]] var<uniform> uniforms : Uniforms;
+    
+    struct Input {
+        [[location(0)]] a_position : vec4<f32>;
+        [[location(1)]] a_normal : vec4<f32>;
+    };
+    
+    struct Output {
+        [[builtin(position)]] Position : vec4<f32>;
+        [[location(0)]] v_Position : vec4<f32>;
+        [[location(1)]] v_Normal : vec4<f32>;
+    };
 
-      const fragment: GPUFragmentState = {
-        module: shaderModule,
-        entryPoint: "main",
-        targets: [colorState],
-      };
-      return fragment;
+    [[stage(vertex)]]
+    fn main(input: Input) -> Output {                
+        var output: Output;
+        let mPosition:vec4<f32> = uniforms.u_ModelMatrix * input.a_position; 
+        output.v_Position = mPosition;                  
+        output.v_Normal =  uniforms.u_NormalMatrix * input.a_normal;
+        output.Position = uniforms.u_ViewProjectionMatrix * mPosition;            
+        return output;
     }
-    // const shader = this.context.createShader(
-    //   isVert ? GL.VERTEX_SHADER : GL.FRAGMENT_SHADER
-    // );
-    // this.context.shaderSource(shader, shaderSource);
-    // this.context.compileShader(shader);
-    // const compiled = this.context.getShaderParameter(shader, GL.COMPILE_STATUS);
-
-    // if (!compiled) {
-    // output surrounding source code
-    // let info = "";
-    // const messages = this.context.getShaderInfoLog(shader).split("\n");
-    // for (const message of messages) {
-    //   const matches = message.match(
-    //     /(WARNING|ERROR): ([0-9]*):([0-9]*):(.*)/i
-    //   );
-    //   if (matches && matches.length == 5) {
-    //     const lineNumber = parseInt(matches[3]) - 1;
-    //     const lines = shaderSource.split("\n");
-    //     info += `${matches[1]}: ${shaderIdentifier}+includes:${lineNumber}: ${matches[4]}`;
-    //     for (
-    //       let i = Math.max(0, lineNumber - 2);
-    //       i < Math.min(lines.length, lineNumber + 3);
-    //       i++
-    //     ) {
-    //       if (lineNumber === i) {
-    //         info += "->";
-    //       }
-    //       info += "\t" + lines[i] + "\n";
-    //     }
-    //   } else {
-    //     info += message + "\n";
-    //   }
-    // }
-    // throw new Error(
-    //   "Could not compile WebGL program '" + shaderIdentifier + "': " + info
-    // );
-    //   throw new Error("Could not compile WebGL program '" + shaderIdentifier);
-    // }
-
-    // return shader;
+      `,
+    };
+    this.vertModule = this.device.createShaderModule(shaderModuleDesc);
   }
 
-  /**
-   * Create pipeline
-   * @param vertex
-   * @param fragment
-   * @returns
-   * ! change name to createPipeline???
-   */
-  linkProgram(vertex: any, fragment: any) {
+  createFragmentShaderModule() {
+    const shaderModuleDesc = {
+      code: `
+      struct Input {
+        [[location(0)]] v_Position : vec4<f32>;
+        [[location(1)]] v_Normal : vec4<f32>;
+      };
+      [[stage(fragment)]]
+      fn main(input: Input) -> [[location(0)]] vec4<f32> {
+        return  vec4<f32>(1.0, 0.0, 0.0, 1.0);
+      }
+      `,
+    };
+    this.fragModule = this.device.createShaderModule(shaderModuleDesc);
+  }
+
+  public static CreateViewProjection(
+    isPerspective: boolean,
+    aspectRatio: number
+  ) {
+    const viewMatrix = mat4.create();
+    const projectionMatrix = mat4.create();
+    const viewProjectionMatrix = mat4.create();
+
+    if (isPerspective) {
+      mat4.perspective(
+        projectionMatrix,
+        FOVY,
+        aspectRatio,
+        NEAR_PLANE,
+        FAR_PLANE
+      );
+    } else {
+      mat4.ortho(projectionMatrix, -4, 4, -3, 3, -1, 6);
+    }
+
+    mat4.lookAt(
+      viewMatrix,
+      this.CameraPosition,
+      this.LookDirection,
+      this.UpDirection
+    );
+    mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
+
+    const cameraOption = {
+      eye: this.CameraPosition,
+      center: this.LookDirection,
+      zoomMax: 100,
+      zoomSpeed: 2,
+    };
+
+    return {
+      viewMatrix,
+      projectionMatrix,
+      viewProjectionMatrix,
+      cameraOption,
+    };
+  }
+
+  createPipeline() {
+    //uniform data
+    this.normalMatrix = mat4.create();
+    this.modelMatrix = mat4.create();
+    this.vMatrix = mat4.create();
+    this.vpMatrix = mat4.create();
+    this.vp = gltfWebGPU.CreateViewProjection(
+      true,
+      this.canvas.width / this.canvas.height
+    );
+    this.vpMatrix = this.vp.viewProjectionMatrix;
+    this.rotation = vec3.fromValues(0, 0, 0);
+    this.camera = createCamera(this.canvas, this.vp.cameraOption);
+
+    this.eyePosition = new Float32Array(gltfWebGPU.CameraPosition);
+    this.lightPosition = this.eyePosition;
+
+    // ⚗️ Graphics Pipeline
+
+    // 🔣 Input Assembly
+    const positionAttribDesc: GPUVertexAttribute = {
+      shaderLocation: 0, // [[location(0)]]
+      offset: 0,
+      format: "float32x3",
+    };
+    const normalAttribDesc: GPUVertexAttribute = {
+      shaderLocation: 1, // [[location(1)]]
+      offset: 0,
+      format: "float32x3",
+    };
+    const positionBufferDesc: GPUVertexBufferLayout = {
+      attributes: [positionAttribDesc],
+      arrayStride: 4 * 3, // sizeof(float) * 3
+      stepMode: "vertex",
+    };
+    const normalBufferDesc: GPUVertexBufferLayout = {
+      attributes: [normalAttribDesc],
+      arrayStride: 4 * 3, // sizeof(float) * 3
+      stepMode: "vertex",
+    };
+
     // 🌑 Depth
-    // ! consider move it elsewhere
     const depthStencil: GPUDepthStencilState = {
       depthWriteEnabled: true,
       depthCompare: "less",
       format: "depth24plus-stencil8",
     };
 
-    // 🦄 Uniform Data
-    // ! consider move it elsewhere
-    const pipelineLayoutDesc = { bindGroupLayouts: [] };
-    const layout = this.device.createPipelineLayout(pipelineLayoutDesc);
+    // 🎭 Shader Stages
+    const vertex: GPUVertexState = {
+      module: this.vertModule,
+      entryPoint: "main",
+      buffers: [positionBufferDesc, normalBufferDesc],
+    };
+
+    // 🌀 Color/Blend State
+    const colorState: GPUColorTargetState = {
+      format: "bgra8unorm",
+    };
+
+    const fragment: GPUFragmentState = {
+      module: this.fragModule,
+      entryPoint: "main",
+      targets: [colorState],
+    };
+
     // 🟨 Rasterization
     const primitive: GPUPrimitiveState = {
       frontFace: "cw",
@@ -300,24 +314,202 @@ class gltfWebGPU {
     };
 
     const pipelineDesc: GPURenderPipelineDescriptor = {
-      layout,
-
       vertex,
       fragment,
-
       primitive,
       depthStencil,
     };
-    return this.device.createRenderPipeline(pipelineDesc);
-    // let program = this.context.createProgram();
-    // this.context.attachShader(program, vertex);
-    // this.context.attachShader(program, fragment);
-    // this.context.linkProgram(program);
-    // if (!this.context.getProgramParameter(program, GL.LINK_STATUS)) {
-    //   var info = this.context.getProgramInfoLog(program);
-    //   throw new Error("Could not link WebGL program. \n\n" + info);
-    // }
-    // return program;
+    this.pipeline = this.device.createRenderPipeline(pipelineDesc);
+
+    // 🦄 Uniform Data
+    const VERTEX_UNIFORM_BUFFER_SIZE = 192; // 3 4x4 float matrices: 3 x 4 x 4 x 4 = 192
+    this.vertexUniformBuffer = this.device.createBuffer({
+      size: VERTEX_UNIFORM_BUFFER_SIZE,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+
+    // N/A
+    // const fragmentUniformBuffer = this.device.createBuffer({
+    //   size: 32,
+    //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    // });
+
+    this.sceneUniformBindGroup = this.device.createBindGroup({
+      layout: this.pipeline.getBindGroupLayout(0),
+      entries: [
+        {
+          binding: 0,
+          resource: {
+            buffer: this.vertexUniformBuffer,
+            offset: 0,
+            size: VERTEX_UNIFORM_BUFFER_SIZE,
+          },
+        },
+      ],
+    });
+  }
+
+  // ✍️ Write commands to send to the GPU
+  encodeCommands() {
+    let colorAttachment: GPURenderPassColorAttachment = {
+      view: this.colorTextureView,
+      loadValue: [0.0, 0.0, 0.0, 1],
+      storeOp: "store",
+    };
+
+    const depthAttachment: GPURenderPassDepthStencilAttachment = {
+      view: this.depthTextureView,
+      depthLoadValue: 1,
+      depthStoreOp: "store",
+      stencilLoadValue: "load",
+      stencilStoreOp: "store",
+    };
+
+    const renderPassDesc: GPURenderPassDescriptor = {
+      colorAttachments: [colorAttachment],
+      depthStencilAttachment: depthAttachment,
+    };
+
+    this.commandEncoder = this.device.createCommandEncoder();
+
+    // 🖌️ Encode drawing commands
+    this.passEncoder = this.commandEncoder.beginRenderPass(renderPassDesc);
+    this.passEncoder.setPipeline(this.pipeline);
+    this.passEncoder.setViewport(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
+      0,
+      1
+    );
+    this.passEncoder.setScissorRect(
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height
+    );
+    this.passEncoder.setVertexBuffer(0, this.positionBuffer);
+    this.passEncoder.setVertexBuffer(1, this.normalBuffer);
+    this.passEncoder.setIndexBuffer(this.indexBuffer, "uint16");
+    console.log(this.indexCount);
+    this.passEncoder.drawIndexed(this.indexCount, 1);
+    this.passEncoder.endPass();
+
+    this.queue.submit([this.commandEncoder.finish()]);
+  }
+
+  renderUsingWebGPU() {
+    // ⏭ Acquire next image from context
+    this.colorTexture = this.context.getCurrentTexture();
+    this.colorTextureView = this.colorTexture.createView();
+
+    // 📦 Write and submit commands to queue
+    this.encodeCommands();
+  }
+
+  public static CreateTransforms(
+    modelMat: mat4,
+    translation: vec3,
+    rotation: vec3,
+    scaling: vec3
+  ) {
+    const rotateXMat = mat4.create();
+    const rotateYMat = mat4.create();
+    const rotateZMat = mat4.create();
+    const translateMat = mat4.create();
+    const scaleMat = mat4.create();
+
+    // if rotation, translation or scaling is falsy, default values will be set
+    rotation = rotation || [0, 0, 0];
+    translation = translation || [0, 0, 0];
+    scaling = scaling || [1, 1, 1];
+
+    //perform individual transformations
+    mat4.fromTranslation(translateMat, translation);
+    mat4.fromXRotation(rotateXMat, rotation[0]);
+    mat4.fromYRotation(rotateYMat, rotation[1]);
+    mat4.fromZRotation(rotateZMat, rotation[2]);
+    mat4.fromScaling(scaleMat, scaling);
+
+    //combine all transformation matrices together to form a final transform matrix: modelMat
+    // T * R * S
+    mat4.multiply(modelMat, rotateXMat, scaleMat);
+    mat4.multiply(modelMat, rotateYMat, modelMat);
+    mat4.multiply(modelMat, rotateZMat, modelMat);
+    mat4.multiply(modelMat, translateMat, modelMat);
+  }
+
+  draw() {
+    if (this.camera.tick()) {
+      const pMatrix = this.vp.projectionMatrix;
+      this.vMatrix = this.camera.matrix;
+      mat4.multiply(this.vpMatrix, pMatrix, this.vMatrix);
+
+      this.eyePosition = new Float32Array(this.camera.eye.flat());
+      this.lightPosition = this.eyePosition;
+      this.device.queue.writeBuffer(
+        this.vertexUniformBuffer,
+        0,
+        this.vpMatrix as ArrayBuffer
+      );
+    }
+
+    gltfWebGPU.CreateTransforms(
+      this.modelMatrix,
+      [0, 0, 0],
+      this.rotation as vec3,
+      [1, 1, 1]
+    );
+    mat4.invert(this.normalMatrix, this.modelMatrix);
+    mat4.transpose(this.normalMatrix, this.normalMatrix);
+    this.device.queue.writeBuffer(
+      this.vertexUniformBuffer,
+      64,
+      this.modelMatrix as ArrayBuffer
+    );
+    this.device.queue.writeBuffer(
+      this.vertexUniformBuffer,
+      128,
+      this.normalMatrix as ArrayBuffer
+    );
+
+    // ⏭ Acquire next image from context
+    this.colorTexture = this.context.getCurrentTexture();
+    this.colorTextureView = this.colorTexture.createView();
+
+    let colorAttachment: GPURenderPassColorAttachment = {
+      view: this.colorTextureView,
+      loadValue: [0.0, 0.0, 0.0, 1],
+      storeOp: "store",
+    };
+
+    const depthAttachment: GPURenderPassDepthStencilAttachment = {
+      view: this.depthTextureView,
+      depthLoadValue: 1,
+      depthStoreOp: "store",
+      stencilLoadValue: "load",
+      stencilStoreOp: "store",
+    };
+
+    const renderPassDesc: GPURenderPassDescriptor = {
+      colorAttachments: [colorAttachment],
+      depthStencilAttachment: depthAttachment,
+    };
+
+    this.commandEncoder = this.device.createCommandEncoder();
+
+    // 🖌️ Encode drawing commands
+    this.passEncoder = this.commandEncoder.beginRenderPass(renderPassDesc);
+    this.passEncoder.setPipeline(this.pipeline);
+
+    this.passEncoder.setVertexBuffer(0, this.positionBuffer);
+    this.passEncoder.setVertexBuffer(1, this.normalBuffer);
+    this.passEncoder.setIndexBuffer(this.indexBuffer, "uint16");
+    this.passEncoder.setBindGroup(0, this.sceneUniformBindGroup);
+    this.passEncoder.drawIndexed(this.indexCount, 1);
+    this.passEncoder.endPass();
+    this.device.queue.submit([this.commandEncoder.finish()]);
   }
 }
 

@@ -27,7 +27,6 @@ class gltfRenderer {
 
   webGPU: any;
   initialized: any;
-  samples: any;
 
   // create render target for non transmission materials
   opaqueRenderTexture: any;
@@ -58,17 +57,14 @@ class gltfRenderer {
 
   preparedScene: any;
 
-  constructor(device: GPUDevice) {
+  constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
     this.shader = undefined; // current shader
 
     this.currentWidth = 0;
     this.currentHeight = 0;
 
-    this.webGPU = new gltfWebGPU(device);
-    // ! after this line, we should have GL set, but currently we don't know
-    // ! what GL should be
+    this.webGPU = new gltfWebGPU(canvas, device, glslang);
     this.initialized = false;
-    this.samples = 4;
 
     // create render target for non transmission materials
     this.opaqueRenderTexture = 0;
@@ -133,187 +129,38 @@ class gltfRenderer {
     vec3.transformQuat(this.lightFill.direction, [0, 0, -1], quatFill);
   }
 
-  init(state: any) {
-    const context = this.webGPU.context;
-    // ! Get number of samples to take for multisample render buffer
-    const maxSamples = 8;
-    const samples = 8;
-
+  init(state: any, scene: any) {
     if (!this.initialized) {
-      // ! set pixel storage modes: no color space conversion
-      // context.pixelStorei(GL.UNPACK_COLORSPACE_CONVERSION_WEBGL, GL.NONE);
-      // ! enable DEPTH_TEST: Activates depth comparisons and updates to the depth buffer.
-      // context.enable(GL.DEPTH_TEST);
-      // ! depth function used: pass if the incoming value is less than or equal to the depth buffer value
-      // context.depthFunc(GL.LEQUAL);
-      // ! RGBA can all be written to the frame buffer
-      context.colorMask(true, true, true, true);
-      // ! when depth buffer is cleared, it is set to 1.0
-      context.clearDepth(1.0);
-      // ! create a WebGLTexture object
-      this.opaqueRenderTexture = context.createTexture();
-      // ! bind opaqueRenderTexture to TEXTURE_2D
-      context.bindTexture(context.TEXTURE_2D, this.opaqueRenderTexture);
-      // ! set 4 parameters: min/mag fitler, s/t address mode to the desired value
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_MIN_FILTER,
-        context.LINEAR_MIPMAP_LINEAR
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_WRAP_S,
-        context.CLAMP_TO_EDGE
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_WRAP_T,
-        context.CLAMP_TO_EDGE
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_MAG_FILTER,
-        context.NEAREST
-      );
-      // ! put the image into this texture
-      context.texImage2D(
-        context.TEXTURE_2D,
-        0, // LOD
-        context.RGBA, // internal format
-        this.opaqueFramebufferWidth, // width of the texture
-        this.opaqueFramebufferHeight, // height of the texture
-        0, // the width of the border. Must be 0.
-        context.RGBA, // same as internal format
-        context.UNSIGNED_BYTE, // the data type of the texel data:8 bits per channel for gl.RGBA
-        null // ? why is this null? when do we put the image into the buffer?
-      );
-      context.bindTexture(context.TEXTURE_2D, null);
-
-      // ! do all the above, but this time for depth texture
-      this.opaqueDepthTexture = context.createTexture();
-      context.bindTexture(context.TEXTURE_2D, this.opaqueDepthTexture);
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_MIN_FILTER,
-        context.NEAREST
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_WRAP_S,
-        context.CLAMP_TO_EDGE
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_WRAP_T,
-        context.CLAMP_TO_EDGE
-      );
-      context.texParameteri(
-        context.TEXTURE_2D,
-        context.TEXTURE_MAG_FILTER,
-        context.NEAREST
-      );
-      context.texImage2D(
-        context.TEXTURE_2D,
-        0,
-        context.DEPTH_COMPONENT16,
-        this.opaqueFramebufferWidth,
-        this.opaqueFramebufferHeight,
-        0,
-        context.DEPTH_COMPONENT,
-        context.UNSIGNED_SHORT,
-        null
-      );
-      context.bindTexture(context.TEXTURE_2D, null);
-
-      // ! create 2 render buffers
-      // ? why do we need render buffers? Render buffers are for MSAA and transmissive materials
-      this.colorRenderBuffer = context.createRenderbuffer();
-      context.bindRenderbuffer(context.RENDERBUFFER, this.colorRenderBuffer);
-      context.renderbufferStorageMultisample(
-        context.RENDERBUFFER,
-        samples,
-        context.RGBA8,
-        this.opaqueFramebufferWidth,
-        this.opaqueFramebufferHeight
-      );
-
-      this.depthRenderBuffer = context.createRenderbuffer();
-      context.bindRenderbuffer(context.RENDERBUFFER, this.depthRenderBuffer);
-      context.renderbufferStorageMultisample(
-        context.RENDERBUFFER,
-        samples, // the number of samples to be used for the renderbuffer storage
-        context.DEPTH_COMPONENT16, // the internal format of the renderbuffer.
-        this.opaqueFramebufferWidth, // same as texture and depth buffer
-        this.opaqueFramebufferHeight
-      );
-
-      this.samples = samples;
-
-      // ! create framebuffer for render buffers
-      this.opaqueFramebufferMSAA = context.createFramebuffer();
-      context.bindFramebuffer(context.FRAMEBUFFER, this.opaqueFramebufferMSAA);
-      context.framebufferRenderbuffer(
-        context.FRAMEBUFFER,
-        context.COLOR_ATTACHMENT0, // color buffer
-        context.RENDERBUFFER,
-        this.colorRenderBuffer // object to attach.
-      );
-      context.framebufferRenderbuffer(
-        context.FRAMEBUFFER,
-        context.DEPTH_ATTACHMENT,
-        context.RENDERBUFFER,
-        this.depthRenderBuffer
-      );
-
-      // ! create framebuffer for texture
-      this.opaqueFramebuffer = context.createFramebuffer();
-      context.bindFramebuffer(context.FRAMEBUFFER, this.opaqueFramebuffer);
-      context.framebufferTexture2D(
-        context.FRAMEBUFFER,
-        context.COLOR_ATTACHMENT0,
-        context.TEXTURE_2D,
-        this.opaqueRenderTexture,
-        0
-      );
-      context.framebufferTexture2D(
-        context.FRAMEBUFFER,
-        context.DEPTH_ATTACHMENT,
-        context.TEXTURE_2D,
-        this.opaqueDepthTexture,
-        0
-      );
-      context.viewport(
-        0,
-        0,
-        this.opaqueFramebufferWidth,
-        this.opaqueFramebufferHeight
-      );
-      context.bindFramebuffer(context.FRAMEBUFFER, null);
-
-      this.initialized = true;
-
-      // this.environmentRenderer = new EnvironmentRenderer(this.webGPU);
-    } else {
-      if (this.samples != samples) {
-        // ! box doesn't execute the following
-        // this.samples = samples;
-        // context.bindRenderbuffer(context.RENDERBUFFER, this.colorRenderBuffer);
-        // context.renderbufferStorageMultisample(
-        //   context.RENDERBUFFER,
-        //   samples,
-        //   context.RGBA8,
-        //   this.opaqueFramebufferWidth,
-        //   this.opaqueFramebufferHeight
-        // );
-        // context.bindRenderbuffer(context.RENDERBUFFER, this.depthRenderBuffer);
-        // context.renderbufferStorageMultisample(
-        //   context.RENDERBUFFER,
-        //   samples,
-        //   context.DEPTH_COMPONENT16,
-        //   this.opaqueFramebufferWidth,
-        //   this.opaqueFramebufferHeight
-        // );
+      if (this.preparedScene !== scene) {
+        this.prepareScene(state, scene); // prepare this.opaqueDrawables
+        this.preparedScene = scene;
       }
+
+      for (const drawable of this.opaqueDrawables) {
+        const primitive = drawable.primitive;
+        const drawIndexed = primitive.indices !== undefined;
+
+        // 🔺 Buffers
+        // create GPU buffer for indices
+        if (drawIndexed) {
+          if (!this.webGPU.setIndices(state.gltf, primitive.indices)) {
+            return;
+          }
+        }
+
+        // create GPU buffer for vertex attributes
+        for (const attribute of primitive.glAttributes) {
+          if (!this.webGPU.setVerticesAttrib(state.gltf, attribute)) {
+            return;
+          }
+        }
+      }
+
+      // 🖍️ Shaders
+      this.webGPU.createVertexShaderModule();
+      this.webGPU.createFragmentShaderModule();
+      this.webGPU.createPipeline();
+      this.initialized = true;
     }
   }
 
@@ -321,45 +168,12 @@ class gltfRenderer {
     if (this.currentWidth !== width || this.currentHeight !== height) {
       this.currentHeight = height;
       this.currentWidth = width;
-      // ! WebGPU: this.passEncoder.setViewport
-      this.webGPU.context.viewport(0, 0, width, height);
+      // ! WebGPU: this.passEncoder.setViewport, we choose to ignore this temporarily since canvas size is fixed
+      // this.webGPU.context.viewport(0, 0, width, height);
     }
   }
 
-  clearFrame(clearColor: any) {
-    // this.webGPU.context.bindFramebuffer(this.webGPU.context.FRAMEBUFFER, null);
-    // this.webGPU.context.clearColor(
-    //   clearColor[0] / 255.0,
-    //   clearColor[1] / 255.0,
-    //   clearColor[2] / 255.0,
-    //   clearColor[3] / 255.0
-    // );
-    // this.webGPU.context.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-    // this.webGPU.context.bindFramebuffer(
-    //   this.webGPU.context.FRAMEBUFFER,
-    //   this.opaqueFramebuffer
-    // );
-    // this.webGPU.context.clearColor(
-    //   clearColor[0] / 255.0,
-    //   clearColor[1] / 255.0,
-    //   clearColor[2] / 255.0,
-    //   clearColor[3] / 255.0
-    // );
-    // this.webGPU.context.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-    // this.webGPU.context.bindFramebuffer(this.webGPU.context.FRAMEBUFFER, null);
-    // this.webGPU.context.bindFramebuffer(
-    //   this.webGPU.context.FRAMEBUFFER,
-    //   this.opaqueFramebufferMSAA
-    // );
-    // this.webGPU.context.clearColor(
-    //   clearColor[0] / 255.0,
-    //   clearColor[1] / 255.0,
-    //   clearColor[2] / 255.0,
-    //   clearColor[3] / 255.0
-    // );
-    // this.webGPU.context.clear(GL.COLOR_BUFFER_BIT | GL.DEPTH_BUFFER_BIT);
-    // this.webGPU.context.bindFramebuffer(this.webGPU.context.FRAMEBUFFER, null);
-  }
+  clearFrame(clearColor: any) {}
 
   /**
    * Called only once. populate this.opaqueDrawables containing {node: , primitive: }
@@ -392,22 +206,6 @@ class gltfRenderer {
           state.gltf.materials[primitive.material].extensions
             .KHR_materials_transmission === undefined)
     );
-
-    // transparent drawables need sorting before they can be drawn
-    // this.transparentDrawables = drawables.filter(
-    //   ({ node, primitive }) =>
-    //     state.gltf.materials[primitive.material].alphaMode === "BLEND" &&
-    //     (state.gltf.materials[primitive.material].extensions === undefined ||
-    //       state.gltf.materials[primitive.material].extensions
-    //         .KHR_materials_transmission === undefined)
-    // );
-
-    // this.transmissionDrawables = drawables.filter(
-    //   ({ node, primitive }) =>
-    //     state.gltf.materials[primitive.material].extensions !== undefined &&
-    //     state.gltf.materials[primitive.material].extensions
-    //       .KHR_materials_transmission !== undefined
-    // );
   }
 
   /**
@@ -424,10 +222,9 @@ class gltfRenderer {
 
     let currentCamera = undefined;
 
+    // ! we don't support gltf camera for now
     if (state.cameraIndex === undefined) {
       currentCamera = state.userCamera;
-    } else {
-      // currentCamera = state.gltf.cameras[state.cameraIndex].clone();
     }
 
     currentCamera.aspectRatio = this.currentWidth / this.currentHeight;
@@ -437,131 +234,35 @@ class gltfRenderer {
     this.currentCameraPosition = currentCamera.getPosition(state.gltf);
 
     this.visibleLights = this.getVisibleLights(state.gltf, scene);
+
     if (
       this.visibleLights.length === 0 &&
-      !state.renderingParameters.useIBL &&
+      true &&
       state.renderingParameters.useDirectionalLightsWithDisabledIBL
     ) {
-      // ! no visible light for box
-      // this.visibleLights.push(this.lightKey);
-      // this.visibleLights.push(this.lightFill);
+      // ! These two lines should always be executed. CHECK HERE!
+      // ! we assume there are two lights in the scene (since we don't support IBL for now)
+      this.visibleLights.push(this.lightKey);
+      this.visibleLights.push(this.lightFill);
     }
 
     mat4.multiply(this.viewProjectionMatrix, this.projMatrix, this.viewMatrix);
 
-    // Update skins.
-    // ! no skin for now
-    // for (const node of this.nodes) {
-    //   if (node.mesh !== undefined && node.skin !== undefined) {
-    //     this.updateSkin(state, node);
-    //   }
-    // }
-
-    // ! no transmissive drawables present in box
-    // If any transmissive drawables are present, render all opaque and transparent drawables into a separate framebuffer.
-    // if (this.transmissionDrawables.length > 0) {
-    //   // Render transmission sample texture
-    //   this.webGPU.context.bindFramebuffer(
-    //     this.webGPU.context.FRAMEBUFFER,
-    //     this.opaqueFramebufferMSAA
-    //   );
-    //   this.webGPU.context.viewport(
-    //     0,
-    //     0,
-    //     this.opaqueFramebufferWidth,
-    //     this.opaqueFramebufferHeight
-    //   );
-
-    //   // Render environment for the transmission background
-    //   this.environmentRenderer.drawEnvironmentMap(
-    //     this.webGPU,
-    //     this.viewProjectionMatrix,
-    //     state,
-    //     this.shaderCache,
-    //     ["LINEAR_OUTPUT 1"]
-    //   );
-
-    //   for (const drawable of this.opaqueDrawables) {
-    //     var renderpassConfiguration = {};
-    //     renderpassConfiguration.linearOutput = true;
-    //     this.drawPrimitive(
-    //       state,
-    //       renderpassConfiguration,
-    //       drawable.primitive,
-    //       drawable.node,
-    //       this.viewProjectionMatrix
-    //     );
-    //   }
-
-    //   this.transparentDrawables = currentCamera.sortPrimitivesByDepth(
-    //     state.gltf,
-    //     this.transparentDrawables
-    //   );
-    //   for (const drawable of this.transparentDrawables) {
-    //     var renderpassConfiguration = {};
-    //     renderpassConfiguration.linearOutput = true;
-    //     this.drawPrimitive(
-    //       state,
-    //       renderpassConfiguration,
-    //       drawable.primitive,
-    //       drawable.node,
-    //       this.viewProjectionMatrix
-    //     );
-    //   }
-
-    //   // "blit" the multisampled opaque texture into the color buffer, which adds antialiasing
-    //   this.webGPU.context.bindFramebuffer(
-    //     this.webGPU.context.READ_FRAMEBUFFER,
-    //     this.opaqueFramebufferMSAA
-    //   );
-    //   this.webGPU.context.bindFramebuffer(
-    //     this.webGPU.context.DRAW_FRAMEBUFFER,
-    //     this.opaqueFramebuffer
-    //   );
-    //   this.webGPU.context.blitFramebuffer(
-    //     0,
-    //     0,
-    //     this.opaqueFramebufferWidth,
-    //     this.opaqueFramebufferHeight,
-    //     0,
-    //     0,
-    //     this.opaqueFramebufferWidth,
-    //     this.opaqueFramebufferHeight,
-    //     this.webGPU.context.COLOR_BUFFER_BIT,
-    //     this.webGPU.context.NEAREST
-    //   );
-
-    //   // Create Framebuffer Mipmaps
-    //   this.webGPU.context.bindTexture(
-    //     this.webGPU.context.TEXTURE_2D,
-    //     this.opaqueRenderTexture
-    //   );
-
-    //   this.webGPU.context.generateMipmap(this.webGPU.context.TEXTURE_2D);
-    // }
-
-    // Render to canvas
-    this.webGPU.context.bindFramebuffer(this.webGPU.context.FRAMEBUFFER, null);
-    this.webGPU.context.viewport(0, 0, this.currentWidth, this.currentHeight);
-
     // Render environment
     // ! don't render environment for now
-    // const fragDefines = [];
-    // this.pushFragParameterDefines(fragDefines, state);
-    // this.environmentRenderer.drawEnvironmentMap(
-    //   this.webGPU,
-    //   this.viewProjectionMatrix,
-    //   state,
-    //   this.shaderCache,
-    //   fragDefines
-    // );
 
     for (const drawable of this.opaqueDrawables) {
       var renderpassConfiguration: any = {};
       renderpassConfiguration.linearOutput = false;
-      this.drawPrimitive(
+      // this.drawPrimitive(
+      //   state,
+      //   renderpassConfiguration,
+      //   drawable.primitive,
+      //   drawable.node,
+      //   this.viewProjectionMatrix
+      // );
+      this.drawPrimitiveWebGPU(
         state,
-        renderpassConfiguration,
         drawable.primitive,
         drawable.node,
         this.viewProjectionMatrix
@@ -570,335 +271,162 @@ class gltfRenderer {
 
     // filter materials with transmission extension
     // ! no transmissionDrawables for box
-    // this.transmissionDrawables = currentCamera.sortPrimitivesByDepth(
-    //   state.gltf,
-    //   this.transmissionDrawables
-    // );
-    // for (const drawable of this.transmissionDrawables) {
-    //   var renderpassConfiguration = {};
-    //   renderpassConfiguration.linearOutput = false;
-    //   this.drawPrimitive(
-    //     state,
-    //     renderpassConfiguration,
-    //     drawable.primitive,
-    //     drawable.node,
-    //     this.viewProjectionMatrix,
-    //     this.opaqueRenderTexture
-    //   );
-    // }
+
     // ! no transparent for box
-    // for (const drawable of this.transparentDrawables) {
-    //   var renderpassConfiguration = {};
-    //   renderpassConfiguration.linearOutput = false;
-    //   this.drawPrimitive(
-    //     state,
-    //     renderpassConfiguration,
-    //     drawable.primitive,
-    //     drawable.node,
-    //     this.viewProjectionMatrix
-    //   );
-    // }
   }
 
-  drawPrimitive(
+  drawPrimitiveWebGPU(
     state: any,
-    renderpassConfiguration: any,
     primitive: any,
     node: any,
-    viewProjectionMatrix: any,
-    transmissionSampleTexture: any = undefined
+    viewProjectionMatrix: any
   ) {
     if (primitive.skip) return;
+    let material = state.gltf.materials[primitive.material];
 
-    let material;
-    if (primitive.mappings !== undefined && state.variant != "default") {
-      // ! box skips this
-      // const names = state.gltf.variants.map((obj) => obj.name);
-      // const idx = names.indexOf(state.variant);
-      // let materialIdx = primitive.material;
-      // primitive.mappings.forEach((element) => {
-      //   if (element.variants.indexOf(idx) >= 0) {
-      //     materialIdx = element.material;
-      //   }
-      // });
-      // material = state.gltf.materials[materialIdx];
-    } else {
-      material = state.gltf.materials[primitive.material];
-    }
-
-    //select shader permutation, compile and link program.
-
-    let vertDefines: any = [];
-    // ! pushVertParameterDefines doesn't do anything for box
-    // this.pushVertParameterDefines(
-    //   vertDefines,
-    //   state.renderingParameters,
-    //   state.gltf,
-    //   node,
-    //   primitive
-    // );
-    vertDefines = primitive.getDefines().concat(vertDefines);
-    // ! for box: 'HAS_NORMAL_VEC3 1', 'HAS_POSITION_VEC3 1' are defined
-
-    let fragDefines = material
-      .getDefines(state.renderingParameters)
-      .concat(vertDefines);
-    // ! doesn't get executed for box
-    // if (renderpassConfiguration.linearOutput === true) {
-    //   fragDefines.push("LINEAR_OUTPUT 1");
-    // }
-    this.pushFragParameterDefines(fragDefines, state);
-    // ! for box:
-    /*
-    "ALPHAMODE_OPAQUE 0"
-"ALPHAMODE_MASK 1"
-"ALPHAMODE_BLEND 2"
- "ALPHAMODE ALPHAMODE_OPAQUE"
- "MATERIAL_METALLICROUGHNESS 1"
- "HAS_NORMAL_VEC3 1"
- "HAS_POSITION_VEC3 1"
- "USE_PUNCTUAL 1"
- "LIGHT_COUNT 0"
-*/
-
-    // ! for box: using primitive.vert and pbr.frag
-    const fragmentHash = this.shaderCache.selectShader(
-      material.getShaderIdentifier(),
-      fragDefines
-    );
-    const vertexHash = this.shaderCache.selectShader(
-      primitive.getShaderIdentifier(),
-      vertDefines
-    );
-
-    if (fragmentHash && vertexHash) {
-      this.shader = this.shaderCache.getShaderProgram(fragmentHash, vertexHash);
-    }
-
-    if (this.shader === undefined) {
-      return;
-    }
-
-    this.webGPU.context.useProgram(this.shader.program);
-
-    // ! no lights for now
-    // if (state.renderingParameters.usePunctual) {
-    //   this.applyLights(state.gltf);
-    // }
-
-    // update model dependant matrices once per node (transform matrices have already been calculated)
-    this.shader.updateUniform("u_ViewProjectionMatrix", viewProjectionMatrix);
-    this.shader.updateUniform("u_ModelMatrix", node.worldTransform);
-    this.shader.updateUniform("u_NormalMatrix", node.normalMatrix, false);
-    this.shader.updateUniform(
-      "u_Exposure",
-      state.renderingParameters.exposure,
-      false
-    );
-    this.shader.updateUniform("u_Camera", this.currentCameraPosition, false);
-
-    // ! no animation for now
-    // this.updateAnimationUniforms(state, node, primitive);
-
-    // ! specifies whether polygons are front- or back-facing by setting a winding orientation
-    if (mat4.determinant(node.worldTransform) < 0.0) {
-      // this.webGPU.context.frontFace(GL.CW); // ! figure out what GL should be
-    } else {
-      // this.webGPU.context.frontFace(GL.CCW); // ! figure out what GL should be
-    }
-
-    // ! enable or disable culling of polygons
-    if (material.doubleSided) {
-      // this.webGPU.context.disable(GL.CULL_FACE); // ! figure out what GL should be
-    } else {
-      // this.webGPU.context.enable(GL.CULL_FACE); // ! figure out what GL should be
-    }
-
-    if (material.alphaMode === "BLEND") {
-      // ! no alpha mode for box
-      // this.webGPU.context.enable(GL.BLEND);
-      // this.webGPU.context.blendFuncSeparate(
-      //   GL.SRC_ALPHA,
-      //   GL.ONE_MINUS_SRC_ALPHA,
-      //   GL.ONE,
-      //   GL.ONE_MINUS_SRC_ALPHA
-      // );
-      // this.webGPU.context.blendEquation(GL.FUNC_ADD);
-    } else {
-      // this.webGPU.context.disable(GL.BLEND); // ! figure out what GL should be
-    }
-
-    const drawIndexed = primitive.indices !== undefined;
-    if (drawIndexed) {
-      if (!this.webGPU.setIndices(state.gltf, primitive.indices)) {
-        return;
-      }
-    }
-
-    let vertexCount = 0;
-    for (const attribute of primitive.glAttributes) {
-      const gltfAccessor = state.gltf.accessors[attribute.accessor];
-      vertexCount = gltfAccessor.count;
-
-      const location = this.shader.getAttributeLocation(attribute.name);
-      if (location < 0) {
-        continue; // only skip this attribute
-      }
-      if (!this.webGPU.enableAttribute(state.gltf, location, gltfAccessor)) {
-        return; // skip this primitive
-      }
-    }
-
-    for (let [uniform, val] of material.getProperties().entries()) {
-      this.shader.updateUniform(uniform, val, false);
-    }
-
-    let textureIndex = 0;
-    for (; textureIndex < material.textures.length; ++textureIndex) {
-      // ! no texture in box
-      // let info = material.textures[textureIndex];
-      // const location = this.shader.getUniformLocation(info.samplerName);
-      // if (location < 0) {
-      //   console.log("Unable to find uniform location of " + info.samplerName);
-      //   continue; // only skip this texture
-      // }
-      // if (!this.webGPU.setTexture(location, state.gltf, info, textureIndex)) {
-      //   // binds texture and sampler
-      //   return; // skip this material
-      // }
-    }
-
-    // set the morph target texture
-    // ! no morph target texture for now
-    // if (primitive.morphTargetTextureInfo !== undefined) {
-    //   const location = this.shader.getUniformLocation(
-    //     primitive.morphTargetTextureInfo.samplerName
-    //   );
-    //   if (location < 0) {
-    //     console.log(
-    //       "Unable to find uniform location of " +
-    //         primitive.morphTargetTextureInfo.samplerName
-    //     );
-    //   }
-
-    //   this.webGPU.setTexture(
-    //     location,
-    //     state.gltf,
-    //     primitive.morphTargetTextureInfo,
-    //     textureIndex
-    //   ); // binds texture and sampler
-    //   textureIndex++;
-    // }
-
-    // set the joints texture
-    // ! no joints texture for now
-    // if (
-    //   state.renderingParameters.skinning &&
-    //   node.skin !== undefined &&
-    //   primitive.hasWeights &&
-    //   primitive.hasJoints
-    // ) {
-    //   const skin = state.gltf.skins[node.skin];
-    //   const location = this.shader.getUniformLocation(
-    //     skin.jointTextureInfo.samplerName
-    //   );
-    //   if (location < 0) {
-    //     console.log(
-    //       "Unable to find uniform location of " +
-    //         skin.jointTextureInfo.samplerName
-    //     );
-    //   }
-
-    //   this.webGPU.setTexture(
-    //     location,
-    //     state.gltf,
-    //     skin.jointTextureInfo,
-    //     textureIndex
-    //   ); // binds texture and sampler
-    //   textureIndex++;
-    // }
-
-    let textureCount = textureIndex;
-    if (state.renderingParameters.useIBL && state.environment !== undefined) {
-      // ! no environment map for now
-      // textureCount = this.applyEnvironmentMap(state, textureCount);
-    }
-
-    // if (
-    //   state.renderingParameters.usePunctual &&
-    //   state.environment !== undefined
-    // ) {
-    //   this.webGPU.setTexture(
-    //     this.shader.getUniformLocation("u_SheenELUT"),
-    //     state.environment,
-    //     state.environment.sheenELUT,
-    //     textureCount++
-    //   );
-    // }
-
-    // if (
-    //   transmissionSampleTexture !== undefined &&
-    //   (state.renderingParameters.useIBL ||
-    //     state.renderingParameters.usePunctual) &&
-    //   state.environment &&
-    //   state.renderingParameters.enabledExtensions.KHR_materials_transmission
-    // ) {
-    //   this.webGPU.context.activeTexture(GL.TEXTURE0 + textureCount);
-    //   this.webGPU.context.bindTexture(
-    //     this.webGPU.context.TEXTURE_2D,
-    //     this.opaqueRenderTexture
-    //   );
-    //   this.webGPU.context.uniform1i(
-    //     this.shader.getUniformLocation("u_TransmissionFramebufferSampler"),
-    //     textureCount
-    //   );
-    //   textureCount++;
-
-    //   this.webGPU.context.uniform2i(
-    //     this.shader.getUniformLocation("u_TransmissionFramebufferSize"),
-    //     this.opaqueFramebufferWidth,
-    //     this.opaqueFramebufferHeight
-    //   );
-
-    //   this.webGPU.context.uniformMatrix4fv(
-    //     this.shader.getUniformLocation("u_ModelMatrix"),
-    //     false,
-    //     node.worldTransform
-    //   );
-    //   this.webGPU.context.uniformMatrix4fv(
-    //     this.shader.getUniformLocation("u_ViewMatrix"),
-    //     false,
-    //     this.viewMatrix
-    //   );
-    //   this.webGPU.context.uniformMatrix4fv(
-    //     this.shader.getUniformLocation("u_ProjectionMatrix"),
-    //     false,
-    //     this.projMatrix
-    //   );
-    // }
-
-    if (drawIndexed) {
-      const indexAccessor = state.gltf.accessors[primitive.indices];
-      // ! this needs to be changed to WebGPU format (drawindexed)
-      this.webGPU.context.drawElements(
-        primitive.mode,
-        indexAccessor.count,
-        indexAccessor.componentType,
-        0
-      );
-    } else {
-      // ! doesn't support draw arrays for now
-      // this.webGPU.context.drawArrays(primitive.mode, 0, vertexCount);
-    }
-
-    for (const attribute of primitive.glAttributes) {
-      const location = this.shader.getAttributeLocation(attribute.name);
-      if (location < 0) {
-        continue; // skip this attribute
-      }
-      this.webGPU.context.disableVertexAttribArray(location);
-    }
+    this.webGPU.renderUsingWebGPU();
   }
+
+  //   drawPrimitive(
+  //     state: any,
+  //     renderpassConfiguration: any,
+  //     primitive: any,
+  //     node: any,
+  //     viewProjectionMatrix: any,
+  //     transmissionSampleTexture: any = undefined
+  //   ) {
+  //     if (primitive.skip) return;
+
+  //     let material;
+  //     if (primitive.mappings !== undefined && state.variant != "default") {
+  //       // ! box skips this
+  //     } else {
+  //       material = state.gltf.materials[primitive.material];
+  //     }
+
+  //     //select shader permutation, compile and link program.
+
+  //     let vertDefines: any = [];
+  //     // ! pushVertParameterDefines doesn't do anything for box
+  //     vertDefines = primitive.getDefines().concat(vertDefines);
+  //     // ! for box: 'HAS_NORMAL_VEC3 1', 'HAS_POSITION_VEC3 1' are defined
+
+  //     let fragDefines = material
+  //       .getDefines(state.renderingParameters)
+  //       .concat(vertDefines);
+  //     // ! linearOutput doesn't get executed for box
+  //     this.pushFragParameterDefines(fragDefines, state);
+  //     // ! for box:
+  //     /*
+  //     "ALPHAMODE_OPAQUE 0"
+  // "ALPHAMODE_MASK 1"
+  // "ALPHAMODE_BLEND 2"
+  //  "ALPHAMODE ALPHAMODE_OPAQUE"
+  //  "MATERIAL_METALLICROUGHNESS 1"
+  //  "HAS_NORMAL_VEC3 1"
+  //  "HAS_POSITION_VEC3 1"
+  //  "USE_PUNCTUAL 1"
+  //  "LIGHT_COUNT 0"
+  // */
+
+  //     // ! for box: using primitive.vert and pbr.frag
+  //     const fragmentHash = this.shaderCache.selectShader(
+  //       material.getShaderIdentifier(),
+  //       fragDefines
+  //     );
+  //     const vertexHash = this.shaderCache.selectShader(
+  //       primitive.getShaderIdentifier(),
+  //       vertDefines
+  //     );
+
+  //     if (fragmentHash && vertexHash) {
+  //       this.shader = this.shaderCache.getShaderProgram(fragmentHash, vertexHash);
+  //     }
+
+  //     if (this.shader === undefined) {
+  //       return;
+  //     }
+
+  //     this.webGPU.context.useProgram(this.shader.program);
+
+  //     // ! we always have two default lights for now
+  //     // if (state.renderingParameters.usePunctual) {
+  //     if (true) {
+  //       this.applyLights(state.gltf);
+  //     }
+
+  //     // update model dependant matrices once per node (transform matrices have already been calculated)
+  //     this.shader.updateUniform("u_ViewProjectionMatrix", viewProjectionMatrix);
+  //     this.shader.updateUniform("u_ModelMatrix", node.worldTransform);
+  //     this.shader.updateUniform("u_NormalMatrix", node.normalMatrix, false);
+  //     this.shader.updateUniform(
+  //       "u_Exposure",
+  //       state.renderingParameters.exposure,
+  //       false
+  //     );
+  //     this.shader.updateUniform("u_Camera", this.currentCameraPosition, false);
+
+  //     // ! specifies whether polygons are front- or back-facing by setting a winding orientation
+  //     if (mat4.determinant(node.worldTransform) < 0.0) {
+  //       // this.webGPU.context.frontFace(GL.CW); // ! figure out what GL should be
+  //     } else {
+  //       // this.webGPU.context.frontFace(GL.CCW); // ! figure out what GL should be
+  //     }
+
+  //     // ! enable or disable culling of polygons
+  //     if (material.doubleSided) {
+  //       // this.webGPU.context.disable(GL.CULL_FACE); // ! figure out what GL should be
+  //     } else {
+  //       // this.webGPU.context.enable(GL.CULL_FACE); // ! figure out what GL should be
+  //     }
+
+  //     if (material.alphaMode === "BLEND") {
+  //       // ! no alpha mode for box
+  //     } else {
+  //       // this.webGPU.context.disable(GL.BLEND); // ! figure out what GL should be
+  //     }
+
+  //     const drawIndexed = primitive.indices !== undefined;
+  //     if (drawIndexed) {
+  //       if (!this.webGPU.setIndices(state.gltf, primitive.indices)) {
+  //         return;
+  //       }
+  //     }
+
+  //     for (const attribute of primitive.glAttributes) {
+  //       const gltfAccessor = state.gltf.accessors[attribute.accessor];
+  //       const location = this.shader.getAttributeLocation(attribute.name);
+  //       if (location < 0) {
+  //         continue; // only skip this attribute
+  //       }
+  //       if (!this.webGPU.enableAttribute(state.gltf, location, gltfAccessor)) {
+  //         return; // skip this primitive
+  //       }
+  //     }
+
+  //     for (let [uniform, val] of material.getProperties().entries()) {
+  //       this.shader.updateUniform(uniform, val, false);
+  //     }
+
+  //     if (drawIndexed) {
+  //       const indexAccessor = state.gltf.accessors[primitive.indices];
+  //       // ! this needs to be changed to WebGPU format (drawindexed)
+  //       this.webGPU.context.drawElements(
+  //         primitive.mode,
+  //         indexAccessor.count,
+  //         indexAccessor.componentType,
+  //         0
+  //       );
+  //     }
+
+  //     // for (const attribute of primitive.glAttributes) {
+  //     //   const location = this.shader.getAttributeLocation(attribute.name);
+  //     //   if (location < 0) {
+  //     //     continue; // skip this attribute
+  //     //   }
+  //     //   this.webGPU.context.disableVertexAttribArray(location);
+  //     // }
+  //   }
 
   //////////////////////////////////////
   // Helper functions

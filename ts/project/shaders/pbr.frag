@@ -28,25 +28,10 @@ precision highp float;
 
 out vec4 g_finalColor;
 
-
 void main()
 {
     vec4 baseColor = getBaseColor();
-
-#if ALPHAMODE == ALPHAMODE_OPAQUE
     baseColor.a = 1.0;
-#endif
-
-#ifdef MATERIAL_UNLIT
-#if ALPHAMODE == ALPHAMODE_MASK
-    if (baseColor.a < u_AlphaCutoff)
-    {
-        discard;
-    }
-#endif
-    g_finalColor = (vec4(linearTosRGB(baseColor.rgb), baseColor.a));
-    return;
-#endif
 
     vec3 v = normalize(u_Camera - v_Position);
     NormalInfo normalInfo = getNormalInfo(v);
@@ -66,37 +51,9 @@ void main()
     materialInfo.f0 = vec3(0.04);
     materialInfo.specularWeight = 1.0;
     
-#ifdef MATERIAL_IOR
-    materialInfo = getIorInfo(materialInfo);
-#endif
 
-#ifdef MATERIAL_SPECULARGLOSSINESS
-    materialInfo = getSpecularGlossinessInfo(materialInfo);
-#endif
-
-#ifdef MATERIAL_METALLICROUGHNESS
     materialInfo = getMetallicRoughnessInfo(materialInfo);
-#endif
 
-#ifdef MATERIAL_SHEEN
-    materialInfo = getSheenInfo(materialInfo);
-#endif
-
-#ifdef MATERIAL_CLEARCOAT
-    materialInfo = getClearCoatInfo(materialInfo, normalInfo);
-#endif
-
-#ifdef MATERIAL_SPECULAR
-    materialInfo = getSpecularInfo(materialInfo);
-#endif
-
-#ifdef MATERIAL_TRANSMISSION
-    materialInfo = getTransmissionInfo(materialInfo);
-#endif
-
-#ifdef MATERIAL_VOLUME
-    materialInfo = getVolumeInfo(materialInfo);
-#endif
 
     materialInfo.perceptualRoughness = clamp(materialInfo.perceptualRoughness, 0.0, 1.0);
     materialInfo.metallic = clamp(materialInfo.metallic, 0.0, 1.0);
@@ -121,41 +78,11 @@ void main()
 
     float albedoSheenScaling = 1.0;
 
-    // Calculate lighting contribution from image based lighting source (IBL)
-#ifdef USE_IBL
-    f_specular += getIBLRadianceGGX(n, v, materialInfo.perceptualRoughness, materialInfo.f0, materialInfo.specularWeight);
-    f_diffuse += getIBLRadianceLambertian(n, v, materialInfo.perceptualRoughness, materialInfo.c_diff, materialInfo.f0, materialInfo.specularWeight);
-
-#ifdef MATERIAL_CLEARCOAT
-    f_clearcoat += getIBLRadianceGGX(materialInfo.clearcoatNormal, v, materialInfo.clearcoatRoughness, materialInfo.clearcoatF0, 1.0);
-#endif
-
-#ifdef MATERIAL_SHEEN
-    f_sheen += getIBLRadianceCharlie(n, v, materialInfo.sheenRoughnessFactor, materialInfo.sheenColorFactor);
-#endif
-#endif
-
-#if (defined(MATERIAL_TRANSMISSION) || defined(MATERIAL_VOLUME)) && (defined(USE_PUNCTUAL) || defined(USE_IBL))
-    f_transmission += materialInfo.transmissionFactor * getIBLVolumeRefraction(
-        n, v,
-        materialInfo.perceptualRoughness,
-        materialInfo.baseColor, materialInfo.f0, materialInfo.f90,
-        v_Position, u_ModelMatrix, u_ViewMatrix, u_ProjectionMatrix,
-        materialInfo.ior, materialInfo.thickness, materialInfo.attenuationColor, materialInfo.attenuationDistance);
-#endif
 
     float ao = 1.0;
-    // Apply optional PBR terms for additional (optional) shading
-#ifdef HAS_OCCLUSION_MAP
-    ao = texture(u_OcclusionSampler,  getOcclusionUV()).r;
-    f_diffuse = mix(f_diffuse, f_diffuse * ao, u_OcclusionStrength);
-    // apply ambient occlusion to all lighting that is not punctual
-    f_specular = mix(f_specular, f_specular * ao, u_OcclusionStrength);
-    f_sheen = mix(f_sheen, f_sheen * ao, u_OcclusionStrength);
-    f_clearcoat = mix(f_clearcoat, f_clearcoat * ao, u_OcclusionStrength);
-#endif
 
-#ifdef USE_PUNCTUAL
+
+
     for (int i = 0; i < LIGHT_COUNT; ++i)
     {
         Light light = u_Lights[i];
@@ -186,42 +113,12 @@ void main()
             f_diffuse += intensity * NdotL *  BRDF_lambertian(materialInfo.f0, materialInfo.f90, materialInfo.c_diff, materialInfo.specularWeight, VdotH);
             f_specular += intensity * NdotL * BRDF_specularGGX(materialInfo.f0, materialInfo.f90, materialInfo.alphaRoughness, materialInfo.specularWeight, VdotH, NdotL, NdotV, NdotH);
 
-#ifdef MATERIAL_SHEEN
-            f_sheen += intensity * getPunctualRadianceSheen(materialInfo.sheenColorFactor, materialInfo.sheenRoughnessFactor, NdotL, NdotV, NdotH);
-            albedoSheenScaling = min(1.0 - max3(materialInfo.sheenColorFactor) * albedoSheenScalingLUT(NdotV, materialInfo.sheenRoughnessFactor),
-                1.0 - max3(materialInfo.sheenColorFactor) * albedoSheenScalingLUT(NdotL, materialInfo.sheenRoughnessFactor));
-#endif
-
-#ifdef MATERIAL_CLEARCOAT
-            f_clearcoat += intensity * getPunctualRadianceClearCoat(materialInfo.clearcoatNormal, v, l, h, VdotH,
-                materialInfo.clearcoatF0, materialInfo.clearcoatF90, materialInfo.clearcoatRoughness);
-#endif
         }
-
-        // BDTF
-#ifdef MATERIAL_TRANSMISSION
-        // If the light ray travels through the geometry, use the point it exits the geometry again.
-        // That will change the angle to the light source, if the material refracts the light ray.
-        vec3 transmissionRay = getVolumeTransmissionRay(n, v, materialInfo.thickness, materialInfo.ior, u_ModelMatrix);
-        pointToLight -= transmissionRay;
-        l = normalize(pointToLight);
-
-        vec3 intensity = getLighIntensity(light, pointToLight);
-        vec3 transmittedLight = intensity * getPunctualRadianceTransmission(n, v, l, materialInfo.alphaRoughness, materialInfo.f0, materialInfo.f90, materialInfo.baseColor, materialInfo.ior);
-
-#ifdef MATERIAL_VOLUME
-        transmittedLight = applyVolumeAttenuation(transmittedLight, length(transmissionRay), materialInfo.attenuationColor, materialInfo.attenuationDistance);
-#endif
-
-        f_transmission += materialInfo.transmissionFactor * transmittedLight;
-#endif
     }
-#endif
+
 
     f_emissive = u_EmissiveFactor;
-#ifdef HAS_EMISSIVE_MAP
-    f_emissive *= texture(u_EmissiveSampler, getEmissiveUV()).rgb;
-#endif
+
 
     vec3 color = vec3(0);
 
@@ -230,120 +127,15 @@ void main()
     float clearcoatFactor = 0.0;
     vec3 clearcoatFresnel = vec3(0);
 
-#ifdef MATERIAL_CLEARCOAT
-    clearcoatFactor = materialInfo.clearcoatFactor;
-    clearcoatFresnel = F_Schlick(materialInfo.clearcoatF0, materialInfo.clearcoatF90, clampedDot(materialInfo.clearcoatNormal, v));
-    f_clearcoat = f_clearcoat * clearcoatFactor;
-#endif
 
-#ifdef MATERIAL_TRANSMISSION
-    vec3 diffuse = mix(f_diffuse, f_transmission, materialInfo.transmissionFactor);
-#else
+
+
     vec3 diffuse = f_diffuse;
-#endif
+
 
     color = f_emissive + diffuse + f_specular;
     color = f_sheen + color * albedoSheenScaling;
     color = color * (1.0 - clearcoatFactor * clearcoatFresnel) + f_clearcoat;
 
-#if DEBUG == DEBUG_NONE
-
-#if ALPHAMODE == ALPHAMODE_MASK
-    // Late discard to avoid samplig artifacts. See https://github.com/KhronosGroup/glTF-Sample-Viewer/issues/267
-    if (baseColor.a < u_AlphaCutoff)
-    {
-        discard;
-    }
-    baseColor.a = 1.0;
-#endif
-
-#ifdef LINEAR_OUTPUT
-    g_finalColor = vec4(color.rgb, baseColor.a);
-#else
     g_finalColor = vec4(toneMap(color), baseColor.a);
-#endif
-
-#else
-    g_finalColor.a = 1.0;
-#endif
-
-#if DEBUG == DEBUG_METALLIC
-    g_finalColor.rgb = vec3(materialInfo.metallic);
-#endif
-
-#if DEBUG == DEBUG_ROUGHNESS
-    g_finalColor.rgb = vec3(materialInfo.perceptualRoughness);
-#endif
-
-#if DEBUG == DEBUG_NORMAL
-#ifdef HAS_NORMAL_MAP
-    g_finalColor.rgb = texture(u_NormalSampler, getNormalUV()).rgb;
-#else
-    g_finalColor.rgb = vec3(0.5, 0.5, 1.0);
-#endif
-#endif
-
-#if DEBUG == DEBUG_NORMAL_GEOMETRY
-    g_finalColor.rgb = (normalInfo.ng + 1.0) / 2.0;
-#endif
-
-#if DEBUG == DEBUG_NORMAL_WORLD
-    g_finalColor.rgb = (n + 1.0) / 2.0;
-#endif
-
-#if DEBUG == DEBUG_TANGENT
-    g_finalColor.rgb = t * 0.5 + vec3(0.5);
-#endif
-
-#if DEBUG == DEBUG_BITANGENT
-    g_finalColor.rgb = b * 0.5 + vec3(0.5);
-#endif
-
-#if DEBUG == DEBUG_BASE_COLOR_SRGB
-    g_finalColor.rgb = linearTosRGB(materialInfo.baseColor);
-#endif
-
-#if DEBUG == DEBUG_BASE_COLOR_LINEAR
-    g_finalColor.rgb = materialInfo.baseColor;
-#endif
-
-#if DEBUG == DEBUG_OCCLUSION
-    g_finalColor.rgb = vec3(ao);
-#endif
-
-#if DEBUG == DEBUG_F0
-    g_finalColor.rgb = materialInfo.f0;
-#endif
-
-#if DEBUG == DEBUG_EMISSIVE_SRGB
-    g_finalColor.rgb = linearTosRGB(f_emissive);
-#endif
-
-#if DEBUG == DEBUG_EMISSIVE_LINEAR
-    g_finalColor.rgb = f_emissive;
-#endif
-
-#if DEBUG == DEBUG_SPECULAR_SRGB
-    g_finalColor.rgb = linearTosRGB(f_specular);
-#endif
-
-#if DEBUG == DEBUG_DIFFUSE_SRGB
-    g_finalColor.rgb = linearTosRGB(f_diffuse);
-#endif
-
-#if DEBUG == DEBUG_CLEARCOAT_SRGB
-    g_finalColor.rgb = linearTosRGB(f_clearcoat);
-#endif
-
-#if DEBUG == DEBUG_SHEEN_SRGB
-    g_finalColor.rgb = linearTosRGB(f_sheen);
-#endif
-
-#if DEBUG == DEBUG_TRANSMISSION_SRGB
-    g_finalColor.rgb = linearTosRGB(f_transmission);
-#endif
-
-#if DEBUG == DEBUG_ALPHA
-    g_finalColor.rgb = vec3(baseColor.a);
-#endif
 }

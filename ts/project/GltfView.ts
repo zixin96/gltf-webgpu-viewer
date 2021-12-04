@@ -12,9 +12,9 @@ class GltfView {
    * 3D rendering of the Gltf.
    * @param context
    */
-  constructor(device: GPUDevice) {
+  constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
     this.device = device;
-    this.renderer = new gltfRenderer(this.device);
+    this.renderer = new gltfRenderer(canvas, this.device, glslang);
   }
 
   /**
@@ -51,25 +51,17 @@ class GltfView {
    * @returns
    */
   renderFrame(state: any, width: any, height: any) {
-    this.renderer.init(state);
-    // this._animate(state);
-
-    this.renderer.resize(width, height);
-
-    this.renderer.clearFrame(state.renderingParameters.clearColor);
-
-    if (state.gltf === undefined) {
-      return;
-    }
-
     const scene = state.gltf.scenes[state.sceneIndex];
-
     if (scene === undefined) {
       return;
     }
 
+    if (state.gltf === undefined) {
+      return;
+    }
     scene.applyTransformHierarchy(state.gltf);
 
+    this.renderer.init(state, scene);
     this.renderer.drawScene(state, scene);
   }
 }

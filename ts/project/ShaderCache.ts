@@ -45,8 +45,14 @@ class ShaderCache {
     }
   }
 
-  // example args: "pbr.vert", ["NORMALS", "TANGENTS"]
+  /**
+   * Put #defines inside shaders and create shader module
+   * @param shaderIdentifier shader name as a string
+   * @param permutationDefines its #defines
+   * @returns
+   */
   selectShader(shaderIdentifier: any, permutationDefines: any) {
+    // example args: "pbr.vert", ["NORMALS", "TANGENTS"]
     // first check shaders for the exact permutation
     // if not present, check sources and compile it
     // if not present, return null object
@@ -63,7 +69,7 @@ class ShaderCache {
     // console.log(shaderIdentifier);
 
     // generate all #define
-    let defines = "#version 300 es\n";
+    let defines = "#version 310 es\n";
     for (let define of permutationDefines) {
       // console.log(define);
       hash ^= stringHash(define);
@@ -75,7 +81,11 @@ class ShaderCache {
     if (shader === undefined) {
       // console.log(defines);
       // compile this variant
-      shader = this.gl.compileShader(shaderIdentifier, isVert, defines + src);
+      // shader = this.gl.createShaderModuleFromSource(
+      //   shaderIdentifier,
+      //   isVert,
+      //   defines + src
+      // );
       this.shaders.set(hash, shader);
     }
 
@@ -93,14 +103,14 @@ class ShaderCache {
       return program;
     } // link this shader program type!
     else {
-      let linkedProg = this.gl.linkProgram(
-        this.shaders.get(vertexShaderHash),
-        this.shaders.get(fragmentShaderHash)
-      );
-      if (linkedProg) {
-        let program = new gltfShader(linkedProg, hash, this.gl);
-        this.programs.set(hash, program);
-        return program;
+      // let linkedProg = this.gl.linkProgram(
+      //   this.shaders.get(vertexShaderHash),
+      //   this.shaders.get(fragmentShaderHash)
+      // );
+      if (false) {
+        // let program = new gltfShader(linkedProg, hash, this.gl);
+        // this.programs.set(hash, program);
+        // return program;
       }
     }
 

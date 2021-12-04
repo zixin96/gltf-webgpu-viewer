@@ -87,40 +87,6 @@ export default class Renderer {
 
   // 🍱 Initialize resources to render triangle (buffers, shaders, pipeline)
   async initializeResources() {
-    const view = new GltfView(this.device);
-    // console.log(view);
-    const resourceLoader = view.createResourceLoader();
-    //console.log(resourceLoader);
-    const state = view.createState();
-    // In Khronos, when IBL is turned off, directional lights kick in immediately
-    state.renderingParameters.useDirectionalLightsWithDisabledIBL = true;
-    // console.log(state);
-
-    // * In Khronos, a pathProvider is created here containing all gltfModel path
-    // * e.g. Box: "assets/models/2.0/Box/glTF/Box.gltf"
-
-    // Here, we hardcode box.gltf to load box
-    // In loadGltf(), we use this string as part of a https request
-    // FIXME: user can choose which file to load
-    state.gltf = await resourceLoader.loadGltf("Box.gltf");
-    const defaultScene = state.gltf.scene;
-    state.sceneIndex = defaultScene === undefined ? 0 : defaultScene;
-    state.cameraIndex = undefined;
-    if (state.gltf.scenes.length != 0) {
-      if (state.sceneIndex > state.gltf.scenes.length - 1) {
-        state.sceneIndex = 0;
-      }
-      const scene = state.gltf.scenes[state.sceneIndex];
-      // after this line, gltfNode inside our glTF object will contain
-      // the correct worldTransform, inverseWorldTransform, and normalMatrix
-      scene.applyTransformHierarchy(state.gltf);
-      // ! Attention: camera spec is dynamically set based on canvas's aspect ratio
-      // ! and scene extent. If no object present in the scene, check here!!!
-      // ! In our implementation, canvas.width and height are fixed to 1024
-      state.userCamera.aspectRatio = this.canvas.width / this.canvas.height;
-      state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
-    }
-
     // 🔺 Buffers
     const createBuffer = (arr: Float32Array | Uint16Array, usage: number) => {
       // 📏 Align to 4 bytes (thanks @chrimsonite)
