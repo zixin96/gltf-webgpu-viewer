@@ -1,6 +1,8 @@
 import { mat4, vec3 } from "gl-matrix";
 import { FOVY, NEAR_PLANE, FAR_PLANE } from "./constants";
 const createCamera = require("3d-view-controls");
+const simpleVertShader = require("raw-loader!glslify-loader!./shaders/simple.vert");
+const simpleFragShader = require("raw-loader!glslify-loader!./shaders/simple.frag");
 
 class gltfWebGPU {
   public static CameraPosition: vec3 = [2, 2, 4];
@@ -148,51 +150,14 @@ class gltfWebGPU {
 
   createVertexShaderModule() {
     const shaderModuleDesc = {
-      code: `
-      [[block]] struct Uniforms {
-        u_ViewProjectionMatrix : mat4x4<f32>;
-        u_ModelMatrix : mat4x4<f32>;               
-        u_NormalMatrix : mat4x4<f32>;                
-    };
-    [[binding(0), group(0)]] var<uniform> uniforms : Uniforms;
-    
-    struct Input {
-        [[location(0)]] a_position : vec4<f32>;
-        [[location(1)]] a_normal : vec4<f32>;
-    };
-    
-    struct Output {
-        [[builtin(position)]] Position : vec4<f32>;
-        [[location(0)]] v_Position : vec4<f32>;
-        [[location(1)]] v_Normal : vec4<f32>;
-    };
-
-    [[stage(vertex)]]
-    fn main(input: Input) -> Output {                
-        var output: Output;
-        let mPosition:vec4<f32> = uniforms.u_ModelMatrix * input.a_position; 
-        output.v_Position = mPosition;                  
-        output.v_Normal =  uniforms.u_NormalMatrix * input.a_normal;
-        output.Position = uniforms.u_ViewProjectionMatrix * mPosition;            
-        return output;
-    }
-      `,
+      code: this.glslang.compileGLSL(simpleVertShader.default, "vertex"),
     };
     this.vertModule = this.device.createShaderModule(shaderModuleDesc);
   }
 
   createFragmentShaderModule() {
     const shaderModuleDesc = {
-      code: `
-      struct Input {
-        [[location(0)]] v_Position : vec4<f32>;
-        [[location(1)]] v_Normal : vec4<f32>;
-      };
-      [[stage(fragment)]]
-      fn main(input: Input) -> [[location(0)]] vec4<f32> {
-        return  vec4<f32>(1.0, 0.0, 0.0, 1.0);
-      }
-      `,
+      code: this.glslang.compileGLSL(simpleFragShader.default, "fragment"),
     };
     this.fragModule = this.device.createShaderModule(shaderModuleDesc);
   }
@@ -514,3 +479,32 @@ class gltfWebGPU {
 }
 
 export { gltfWebGPU };
+
+/*
+      [[block]] struct Uniforms {
+        u_ViewProjectionMatrix : mat4x4<f32>;
+        u_ModelMatrix : mat4x4<f32>;               
+        u_NormalMatrix : mat4x4<f32>;                
+    };
+    [[binding(0), group(0)]] var<uniform> uniforms : Uniforms;
+    
+    struct Input {
+        [[location(0)]] a_position : vec4<f32>;
+        [[location(1)]] a_normal : vec4<f32>;
+    };
+    
+    struct Output {
+        [[builtin(position)]] Position : vec4<f32>;
+        [[location(0)]] v_Position : vec4<f32>;
+        [[location(1)]] v_Normal : vec4<f32>;
+    };
+
+    [[stage(vertex)]]
+    fn main(input: Input) -> Output {                
+        var output: Output;
+        let mPosition:vec4<f32> = uniforms.u_ModelMatrix * input.a_position; 
+        output.v_Position = mPosition;                  
+        output.v_Normal =  uniforms.u_NormalMatrix * input.a_normal;
+        output.Position = uniforms.u_ViewProjectionMatrix * mPosition;            
+        return output;
+    }*/
