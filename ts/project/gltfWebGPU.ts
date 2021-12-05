@@ -50,6 +50,9 @@ class gltfWebGPU {
   // 🔮 support for glsl #version 450 and glsl es #version 310 and up
   glslang: any;
 
+  normalBufferDesc!: GPUVertexBufferLayout;
+  positionBufferDesc!: GPUVertexBufferLayout;
+
   constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
     this.canvas = canvas;
     this.device = device;
@@ -126,6 +129,7 @@ class gltfWebGPU {
 
   setVerticesAttrib(gltf: any, attribute: any) {
     const gltfAccessor = gltf.accessors[attribute.accessor];
+    let gltfBufferView = gltf.bufferViews[gltfAccessor.bufferView];
 
     if (gltfAccessor.glBuffer === undefined) {
       let data = gltfAccessor.getTypedView(gltf);
@@ -136,11 +140,36 @@ class gltfWebGPU {
         data,
         GPUBufferUsage.VERTEX
       );
+
+      const format = `float32x3` as GPUVertexFormat;
+
       if (attribute.attribute === "NORMAL") {
         this.normalBuffer = gltfAccessor.glBuffer;
+        const normalAttribDesc: GPUVertexAttribute = {
+          shaderLocation: 1, // assume normal is always at [[location(1)]]
+          offset: 0, // ? Should it be always 0?
+          format: format,
+        };
+
+        this.normalBufferDesc = {
+          attributes: [normalAttribDesc],
+          arrayStride: gltfBufferView.byteStride,
+          stepMode: "vertex",
+        };
       }
+
       if (attribute.attribute === "POSITION") {
         this.positionBuffer = gltfAccessor.glBuffer;
+        const positionAttribDesc: GPUVertexAttribute = {
+          shaderLocation: 0, // assume position is always at [[location(0)]]
+          offset: 0, // ? Should it be always 0?
+          format: format,
+        };
+        this.positionBufferDesc = {
+          attributes: [positionAttribDesc],
+          arrayStride: gltfBufferView.byteStride,
+          stepMode: "vertex",
+        };
       }
     } else {
       // do nothing
@@ -229,28 +258,6 @@ class gltfWebGPU {
 
     // ⚗️ Graphics Pipeline
 
-    // 🔣 Input Assembly
-    const positionAttribDesc: GPUVertexAttribute = {
-      shaderLocation: 0, // [[location(0)]]
-      offset: 0,
-      format: "float32x3",
-    };
-    const normalAttribDesc: GPUVertexAttribute = {
-      shaderLocation: 1, // [[location(1)]]
-      offset: 0,
-      format: "float32x3",
-    };
-    const positionBufferDesc: GPUVertexBufferLayout = {
-      attributes: [positionAttribDesc],
-      arrayStride: 4 * 3, // sizeof(float) * 3
-      stepMode: "vertex",
-    };
-    const normalBufferDesc: GPUVertexBufferLayout = {
-      attributes: [normalAttribDesc],
-      arrayStride: 4 * 3, // sizeof(float) * 3
-      stepMode: "vertex",
-    };
-
     // 🌑 Depth
     const depthStencil: GPUDepthStencilState = {
       depthWriteEnabled: true,
@@ -262,7 +269,7 @@ class gltfWebGPU {
     const vertex: GPUVertexState = {
       module: this.vertModule,
       entryPoint: "main",
-      buffers: [positionBufferDesc, normalBufferDesc],
+      buffers: [this.positionBufferDesc, this.normalBufferDesc],
     };
 
     // 🌀 Color/Blend State

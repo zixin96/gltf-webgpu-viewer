@@ -28,42 +28,12 @@ class GltfView {
   /**
    * createResourceLoader creates a resource loader with which glTFs and
    * environments can be loaded for the view
-   * @param externalDracoLib
-   * @param externalKtxLib
    * @returns
    */
-  createResourceLoader(
-    externalDracoLib = undefined,
-    externalKtxLib = undefined
-  ) {
+  createResourceLoader() {
     let resourceLoader = new ResourceLoader(this);
-    // resourceLoader.initKtxLib(externalKtxLib);
-    // resourceLoader.initDracoLib(externalDracoLib);
     return resourceLoader;
   }
-
-  /**
-   * renderFrame to the context's default frame buffer
-   * Call this function in the javascript animation update loop for continuous rendering to a canvas
-   * @param state GltfState that is be used for rendering
-   * @param width of the viewport
-   * @param height of the viewport
-   * @returns
-   */
-  // renderFrame(state: any, width: any, height: any) {
-  //   const scene = state.gltf.scenes[state.sceneIndex];
-  //   if (scene === undefined) {
-  //     return;
-  //   }
-
-  //   if (state.gltf === undefined) {
-  //     return;
-  //   }
-  //   scene.applyTransformHierarchy(state.gltf);
-
-  //   this.renderer.init(state, scene);
-  //   this.renderer.drawScene(state, scene);
-  // }
 }
 
 export { GltfView };

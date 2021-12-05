@@ -48,7 +48,10 @@ class gltfBuffer extends GltfObject {
       return false;
     }
     const self = this;
-    const pureName = self.uri.substr(0, self.uri.indexOf("0"));
+    let pureName = self.uri.substr(0, self.uri.indexOf("0"));
+    if (pureName === "") {
+      pureName = self.uri.substr(0, self.uri.indexOf("."));
+    }
     // prefix with agile-hamlet to avoid CORS error
     axios
       .get(

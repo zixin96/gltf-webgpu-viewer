@@ -12,7 +12,8 @@ async function main() {
   const resourceLoader = view.createResourceLoader();
   const state = view.createState();
   // FIXME: user can choose which file to load
-  state.gltf = await resourceLoader.loadGltf("Box");
+  state.gltf = await resourceLoader.loadGltf("BoxInterleaved");
+  console.log(state.gltf);
   const defaultScene = state.gltf.scene;
   state.sceneIndex = defaultScene === undefined ? 0 : defaultScene;
   state.cameraIndex = undefined;
