@@ -136,6 +136,37 @@ class gltfRenderer {
         this.preparedScene = scene;
       }
 
+      let currentCamera = undefined;
+
+      if (state.cameraIndex === undefined) {
+        currentCamera = state.userCamera;
+      } else {
+        currentCamera = state.gltf.cameras[state.cameraIndex].clone();
+      }
+
+      currentCamera.aspectRatio = 1;
+
+      this.projMatrix = currentCamera.getProjectionMatrix();
+      this.viewMatrix = currentCamera.getViewMatrix(state.gltf);
+      this.currentCameraPosition = currentCamera.getPosition(state.gltf);
+
+      mat4.multiply(
+        this.viewProjectionMatrix,
+        this.projMatrix,
+        this.viewMatrix
+      );
+
+      // used in 3d-view-control
+      const cameraOption = {
+        eye: this.currentCameraPosition,
+        center: currentCamera.getLookDirection(),
+        zoomMax: 1000,
+        zoomSpeed: 2,
+      };
+
+      let modelMatrix;
+      let normalMatrix;
+
       for (const drawable of this.opaqueDrawables) {
         const primitive = drawable.primitive;
         const drawIndexed = primitive.indices !== undefined;
@@ -154,12 +185,21 @@ class gltfRenderer {
             return;
           }
         }
+        modelMatrix = drawable.node.worldTransform;
+        normalMatrix = drawable.node.normalMatrix;
       }
 
       // 🖍️ Shaders
       this.webGPU.createVertexShaderModule();
       this.webGPU.createFragmentShaderModule();
-      this.webGPU.createPipeline();
+      this.webGPU.createPipeline(
+        cameraOption,
+        this.viewMatrix,
+        this.projMatrix,
+        this.viewProjectionMatrix,
+        modelMatrix,
+        normalMatrix
+      );
       this.initialized = true;
     }
   }
@@ -208,84 +248,84 @@ class gltfRenderer {
     );
   }
 
-  /**
-   * render complete gltf scene with given camera
-   * @param state
-   * @param scene
-   */
-  drawScene(state: any, scene: any) {
-    // prepare scene once
-    if (this.preparedScene !== scene) {
-      this.prepareScene(state, scene);
-      this.preparedScene = scene;
-    }
+  // /**
+  //  * render complete gltf scene with given camera
+  //  * @param state
+  //  * @param scene
+  //  */
+  // drawScene(state: any, scene: any) {
+  //   // prepare scene once
+  //   if (this.preparedScene !== scene) {
+  //     this.prepareScene(state, scene);
+  //     this.preparedScene = scene;
+  //   }
 
-    let currentCamera = undefined;
+  //   let currentCamera = undefined;
 
-    // ! we don't support gltf camera for now
-    if (state.cameraIndex === undefined) {
-      currentCamera = state.userCamera;
-    }
+  //   // ! we don't support gltf camera for now
+  //   if (state.cameraIndex === undefined) {
+  //     currentCamera = state.userCamera;
+  //   }
 
-    currentCamera.aspectRatio = this.currentWidth / this.currentHeight;
+  //   currentCamera.aspectRatio = this.currentWidth / this.currentHeight;
 
-    this.projMatrix = currentCamera.getProjectionMatrix();
-    this.viewMatrix = currentCamera.getViewMatrix(state.gltf);
-    this.currentCameraPosition = currentCamera.getPosition(state.gltf);
+  //   this.projMatrix = currentCamera.getProjectionMatrix();
+  //   this.viewMatrix = currentCamera.getViewMatrix(state.gltf);
+  //   this.currentCameraPosition = currentCamera.getPosition(state.gltf);
 
-    this.visibleLights = this.getVisibleLights(state.gltf, scene);
+  //   this.visibleLights = this.getVisibleLights(state.gltf, scene);
 
-    if (
-      this.visibleLights.length === 0 &&
-      true &&
-      state.renderingParameters.useDirectionalLightsWithDisabledIBL
-    ) {
-      // ! These two lines should always be executed. CHECK HERE!
-      // ! we assume there are two lights in the scene (since we don't support IBL for now)
-      this.visibleLights.push(this.lightKey);
-      this.visibleLights.push(this.lightFill);
-    }
+  //   if (
+  //     this.visibleLights.length === 0 &&
+  //     true &&
+  //     state.renderingParameters.useDirectionalLightsWithDisabledIBL
+  //   ) {
+  //     // ! These two lines should always be executed. CHECK HERE!
+  //     // ! we assume there are two lights in the scene (since we don't support IBL for now)
+  //     this.visibleLights.push(this.lightKey);
+  //     this.visibleLights.push(this.lightFill);
+  //   }
 
-    mat4.multiply(this.viewProjectionMatrix, this.projMatrix, this.viewMatrix);
+  //   mat4.multiply(this.viewProjectionMatrix, this.projMatrix, this.viewMatrix);
 
-    // Render environment
-    // ! don't render environment for now
+  //   // Render environment
+  //   // ! don't render environment for now
 
-    for (const drawable of this.opaqueDrawables) {
-      var renderpassConfiguration: any = {};
-      renderpassConfiguration.linearOutput = false;
-      // this.drawPrimitive(
-      //   state,
-      //   renderpassConfiguration,
-      //   drawable.primitive,
-      //   drawable.node,
-      //   this.viewProjectionMatrix
-      // );
-      this.drawPrimitiveWebGPU(
-        state,
-        drawable.primitive,
-        drawable.node,
-        this.viewProjectionMatrix
-      );
-    }
+  //   for (const drawable of this.opaqueDrawables) {
+  //     var renderpassConfiguration: any = {};
+  //     renderpassConfiguration.linearOutput = false;
+  //     // this.drawPrimitive(
+  //     //   state,
+  //     //   renderpassConfiguration,
+  //     //   drawable.primitive,
+  //     //   drawable.node,
+  //     //   this.viewProjectionMatrix
+  //     // );
+  //     this.drawPrimitiveWebGPU(
+  //       state,
+  //       drawable.primitive,
+  //       drawable.node,
+  //       this.viewProjectionMatrix
+  //     );
+  //   }
 
-    // filter materials with transmission extension
-    // ! no transmissionDrawables for box
+  //   // filter materials with transmission extension
+  //   // ! no transmissionDrawables for box
 
-    // ! no transparent for box
-  }
+  //   // ! no transparent for box
+  // }
 
-  drawPrimitiveWebGPU(
-    state: any,
-    primitive: any,
-    node: any,
-    viewProjectionMatrix: any
-  ) {
-    if (primitive.skip) return;
-    let material = state.gltf.materials[primitive.material];
+  // drawPrimitiveWebGPU(
+  //   state: any,
+  //   primitive: any,
+  //   node: any,
+  //   viewProjectionMatrix: any
+  // ) {
+  //   if (primitive.skip) return;
+  //   let material = state.gltf.materials[primitive.material];
 
-    this.webGPU.renderUsingWebGPU();
-  }
+  //   this.webGPU.renderUsingWebGPU();
+  // }
 
   //   drawPrimitive(
   //     state: any,

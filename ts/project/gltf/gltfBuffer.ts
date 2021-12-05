@@ -48,10 +48,11 @@ class gltfBuffer extends GltfObject {
       return false;
     }
     const self = this;
+    const pureName = self.uri.substr(0, self.uri.indexOf("0"));
     // prefix with agile-hamlet to avoid CORS error
     axios
       .get(
-        "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/cf4ce3202cec1ee2fa39cb9bcb764c0b8655703c/2.0/Box/glTF/Box0.bin",
+        `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${pureName}/glTF/${self.uri}`,
         { responseType: "arraybuffer" }
       )
       .then(function (response) {

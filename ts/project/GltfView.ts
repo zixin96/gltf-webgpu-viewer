@@ -50,20 +50,20 @@ class GltfView {
    * @param height of the viewport
    * @returns
    */
-  renderFrame(state: any, width: any, height: any) {
-    const scene = state.gltf.scenes[state.sceneIndex];
-    if (scene === undefined) {
-      return;
-    }
+  // renderFrame(state: any, width: any, height: any) {
+  //   const scene = state.gltf.scenes[state.sceneIndex];
+  //   if (scene === undefined) {
+  //     return;
+  //   }
 
-    if (state.gltf === undefined) {
-      return;
-    }
-    scene.applyTransformHierarchy(state.gltf);
+  //   if (state.gltf === undefined) {
+  //     return;
+  //   }
+  //   scene.applyTransformHierarchy(state.gltf);
 
-    this.renderer.init(state, scene);
-    this.renderer.drawScene(state, scene);
-  }
+  //   this.renderer.init(state, scene);
+  //   this.renderer.drawScene(state, scene);
+  // }
 }
 
 export { GltfView };

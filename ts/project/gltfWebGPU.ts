@@ -9,8 +9,8 @@ class gltfWebGPU {
   public static LookDirection: vec3 = [0, 0, 0];
   public static UpDirection: vec3 = [0, 1, 0];
   camera!: any;
-  vp!: any;
   vMatrix!: any;
+  pMatrix!: any;
   vpMatrix!: any;
   eyePosition!: any;
   lightPosition!: any;
@@ -205,21 +205,26 @@ class gltfWebGPU {
     };
   }
 
-  createPipeline() {
+  createPipeline(
+    cameraOption: any,
+    vMatrix: any,
+    pMatrix: any,
+    vpMatrix: any,
+    modelMatrix: any,
+    normalMatrix: any
+  ) {
     //uniform data
-    this.normalMatrix = mat4.create();
-    this.modelMatrix = mat4.create();
-    this.vMatrix = mat4.create();
-    this.vpMatrix = mat4.create();
-    this.vp = gltfWebGPU.CreateViewProjection(
-      true,
-      this.canvas.width / this.canvas.height
-    );
-    this.vpMatrix = this.vp.viewProjectionMatrix;
+    this.normalMatrix = normalMatrix;
+    this.modelMatrix = modelMatrix;
     this.rotation = vec3.fromValues(0, 0, 0);
-    this.camera = createCamera(this.canvas, this.vp.cameraOption);
 
-    this.eyePosition = new Float32Array(gltfWebGPU.CameraPosition);
+    this.vMatrix = vMatrix;
+    this.pMatrix = pMatrix;
+    this.vpMatrix = vpMatrix;
+
+    this.camera = createCamera(this.canvas, cameraOption);
+
+    this.eyePosition = new Float32Array(cameraOption.eye);
     this.lightPosition = this.eyePosition;
 
     // ⚗️ Graphics Pipeline
@@ -407,7 +412,7 @@ class gltfWebGPU {
 
   draw() {
     if (this.camera.tick()) {
-      const pMatrix = this.vp.projectionMatrix;
+      const pMatrix = this.pMatrix;
       this.vMatrix = this.camera.matrix;
       mat4.multiply(this.vpMatrix, pMatrix, this.vMatrix);
 

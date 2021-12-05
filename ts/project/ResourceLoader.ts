@@ -31,7 +31,7 @@ class ResourceLoader {
       await axios
         // FIXME: add error checking. What if URL is wrong?
         .get(
-          `https://agile-hamlet-83897.herokuapp.com/https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/cf4ce3202cec1ee2fa39cb9bcb764c0b8655703c/2.0/Box/glTF/${gltfFile}`,
+          `https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/${gltfFile}/glTF/${gltfFile}.gltf`,
           {
             responseType: "json",
           }
