@@ -13,6 +13,7 @@ const texturesShader = require("raw-loader!glslify-loader!./shaders/textures.gls
 const tonemappingShader = require("raw-loader!glslify-loader!./shaders/tonemapping.glsl");
 
 const uniformBindingNumMap = new Map();
+uniformBindingNumMap.set("u_Lights", 1);
 uniformBindingNumMap.set("u_MetallicFactor", 2);
 uniformBindingNumMap.set("u_RoughnessFactor", 2);
 uniformBindingNumMap.set("u_BaseColorFactor", 2);
@@ -67,6 +68,8 @@ class gltfWebGPU {
 
   normalBufferDesc!: GPUVertexBufferLayout;
   positionBufferDesc!: GPUVertexBufferLayout;
+
+  lightGroupEntry!: GPUBindGroupEntry;
 
   constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
     this.canvas = canvas;
@@ -269,6 +272,38 @@ class gltfWebGPU {
     this.fragModule = this.device.createShaderModule(shaderModuleDesc);
   }
 
+  updateLightUniform(objectName: string, object: any) {
+    const bindingNum = uniformBindingNumMap.get(objectName);
+    console.log(object);
+    let lightArray = new Array();
+    for (let light of object) {
+      lightArray.push(...light.direction);
+      lightArray.push(light.range);
+      lightArray.push(...light.color);
+      lightArray.push(light.intensity);
+      lightArray.push(...light.position);
+      lightArray.push(light.innerConeCos);
+      lightArray.push(light.outerConeCos);
+      lightArray.push(light.type);
+      lightArray.push(0); // paddings
+      lightArray.push(0); // paddings
+    }
+    // let paddings = new Array(20);
+    // lightArray.push(...paddings);
+
+    let lightUniformData = Float32Array.from(lightArray);
+    //console.log(lightUniformData);
+    this.lightGroupEntry = {
+      binding: bindingNum,
+      resource: {
+        buffer: this.createWebGPUBuffer(
+          lightUniformData,
+          GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        ),
+      },
+    };
+  }
+
   createPipeline(
     cameraOption: any,
     vMatrix: any,
@@ -361,7 +396,8 @@ class gltfWebGPU {
       }
     }
     const materialUniformData = Float32Array.from(materialArray);
-    console.log(materialUniformData);
+
+    // uniforms that are not changed per frame can be created using this fashion, and push it to the sceneUniformBindGroup
     materialGroupEntry = {
       binding: materialBindingNum,
       resource: {
@@ -372,6 +408,8 @@ class gltfWebGPU {
       },
     };
 
+    // uniforms that are changed per frame can be created using this fashion, only created with size, but
+    // did not contain any data, until we use writeBuffer in draw() call
     this.vertexUniformBuffer = this.device.createBuffer({
       size: 192,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
@@ -388,6 +426,7 @@ class gltfWebGPU {
         },
         emissive,
         materialGroupEntry,
+        this.lightGroupEntry,
       ],
     });
   }

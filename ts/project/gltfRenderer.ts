@@ -132,6 +132,14 @@ class gltfRenderer {
         zoomSpeed: 2,
       };
 
+      // 💡 lights
+      this.visibleLights = this.getVisibleLights(state.gltf, scene);
+      this.visibleLights.push(this.lightKey);
+      this.visibleLights.push(this.lightFill);
+      if (state.renderingParameters.usePunctual) {
+        this.applyLights(state.gltf);
+      }
+
       let modelMatrix;
       let normalMatrix;
 
@@ -629,9 +637,9 @@ class gltfRenderer {
     for (let light of this.visibleLights) {
       uniformLights.push(light.toUniform(gltf));
     }
-
     if (uniformLights.length > 0) {
-      this.shader.updateUniform("u_Lights", uniformLights);
+      //this.shader.updateUniform("u_Lights", uniformLights);
+      this.webGPU.updateLightUniform("u_Lights", uniformLights);
     }
   }
 }

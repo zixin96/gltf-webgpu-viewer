@@ -31,8 +31,12 @@ void main()
     float rf = u_RoughnessFactor;
     vec4 bc = u_BaseColorFactor;
     vec3 ef = u_EmissiveFactor;
-
-    g_finalColor = vec4(u_MetallicFactor, 0.0, 0.0, 1.0);
+    vec3 testColor;
+    Light light = u_Lights[0];
+    testColor = vec3(light.outerConeCos);
+    // Light light = u_Lights;
+    // testColor = light.color;
+    g_finalColor = vec4(testColor, 1.0);
 //     vec4 baseColor = getBaseColor();
 
 // #if ALPHAMODE == ALPHAMODE_OPAQUE

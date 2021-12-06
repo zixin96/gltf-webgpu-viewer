@@ -23,7 +23,8 @@ const int LightType_Spot = 2;
 
 #ifdef USE_PUNCTUAL
 layout(set=0, binding=1) uniform LightUniforms {
-    Light u_Lights[LIGHT_COUNT + 1]; //Array [0] is not allowed
+    Light u_Lights[LIGHT_COUNT]; //Array [0] is not allowed
+    // Light u_Lights; //Array [0] is not allowed
 };
 #endif
 
