@@ -1,14 +1,14 @@
 const float M_PI = 3.141592653589793;
 
 
-in vec3 v_Position;
+layout(location=0) in vec3 v_Position;
 
 
 #ifdef HAS_NORMAL_VEC3
 #ifdef HAS_TANGENT_VEC4
 in mat3 v_TBN;
 #else
-in vec3 v_Normal;
+layout(location=1) in vec3 v_Normal;
 #endif
 #endif
 

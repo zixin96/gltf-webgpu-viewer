@@ -1,4 +1,6 @@
-uniform float u_Exposure;
+layout(set=0, binding=28) uniform Exposure {
+    float u_Exposure;
+};
 
 
 const float GAMMA = 2.2;

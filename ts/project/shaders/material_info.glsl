@@ -1,49 +1,75 @@
 // Metallic Roughness
-uniform float u_MetallicFactor;
-uniform float u_RoughnessFactor;
-uniform vec4 u_BaseColorFactor;
+layout(set=0, binding=2) uniform MetallicRoughness {
+    // vec4 needs to be first, o.w needs padding
+    vec4 u_BaseColorFactor;
+    float u_MetallicFactor;
+    float u_RoughnessFactor;
+};
 
 // Specular Glossiness
-uniform vec3 u_SpecularFactor;
-uniform vec4 u_DiffuseFactor;
-uniform float u_GlossinessFactor;
+layout(set=0, binding=3) uniform SpecularGlossiness {
+    vec3 u_SpecularFactor;
+    vec4 u_DiffuseFactor;
+    float u_GlossinessFactor;
+};
+
 
 // Sheen
-uniform float u_SheenRoughnessFactor;
-uniform vec3 u_SheenColorFactor;
+layout(set=0, binding=4) uniform Sheen {
+    float u_SheenRoughnessFactor;
+    vec3 u_SheenColorFactor;
+};
+
 
 // Clearcoat
-uniform float u_ClearcoatFactor;
-uniform float u_ClearcoatRoughnessFactor;
+layout(set=0, binding=5) uniform Clearcoat {
+    float u_ClearcoatFactor;
+    float u_ClearcoatRoughnessFactor;
+};
+
 
 // Specular
-uniform vec3 u_KHR_materials_specular_specularColorFactor;
-uniform float u_KHR_materials_specular_specularFactor;
+layout(set=0, binding=6) uniform Specular {
+    vec3 u_KHR_materials_specular_specularColorFactor;
+    float u_KHR_materials_specular_specularFactor;
+};
+
 
 // Transmission
-uniform float u_TransmissionFactor;
+layout(set=0, binding=7) uniform Transmission {
+    float u_TransmissionFactor;
+};
 
 // Volume
-uniform float u_ThicknessFactor;
-uniform vec3 u_AttenuationColor;
-uniform float u_AttenuationDistance;
+layout(set=0, binding=8) uniform Volume {
+    float u_ThicknessFactor;
+    vec3 u_AttenuationColor;
+    float u_AttenuationDistance;
+};
 
 //PBR Next IOR
-uniform float u_Ior;
+layout(set=0, binding=9) uniform IOR {
+    float u_Ior;
+};
 
 // Alpha mode
-uniform float u_AlphaCutoff;
+layout(set=0, binding=10) uniform AlphaMode {
+    float u_AlphaCutoff;
+};
 
-uniform vec3 u_Camera;
+layout(set=0, binding=11) uniform Camera {
+    vec3 u_Camera;
+};
 
 #ifdef MATERIAL_TRANSMISSION
 uniform ivec2 u_ScreenSize;
 #endif
 
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_ViewMatrix;
-uniform mat4 u_ProjectionMatrix;
-
+layout(set=0, binding=12) uniform FragmentMVP  {
+    mat4 u_ModelMatrix;
+    mat4 u_ViewMatrix;
+    mat4 u_ProjectionMatrix;
+};
 
 struct MaterialInfo
 {
@@ -318,5 +344,6 @@ MaterialInfo getIorInfo(MaterialInfo info)
 
 float albedoSheenScalingLUT(float NdotV, float sheenRoughnessFactor)
 {
-    return texture(u_SheenELUT, vec2(NdotV, sheenRoughnessFactor)).r;
+    //return texture(u_SheenELUT, vec2(NdotV, sheenRoughnessFactor)).r;
+    return 0.0;
 }

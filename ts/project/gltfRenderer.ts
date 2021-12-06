@@ -6,19 +6,6 @@ import { gltfNode } from "./gltf/gltfNode";
 import { GltfState } from "./GltfState";
 import { CANVAS_SIZE } from "./constants";
 
-const pbrShader = require("raw-loader!glslify-loader!./shaders/pbr.frag");
-const brdfShader = require("raw-loader!glslify-loader!./shaders/brdf.glsl");
-const materialInfoShader = require("raw-loader!glslify-loader!./shaders/material_info.glsl");
-const iblShader = require("raw-loader!glslify-loader!./shaders/ibl.glsl");
-const punctualShader = require("raw-loader!glslify-loader!./shaders/punctual.glsl");
-const primitiveShader = require("raw-loader!glslify-loader!./shaders/primitive.vert");
-const texturesShader = require("raw-loader!glslify-loader!./shaders/textures.glsl");
-const tonemappingShader = require("raw-loader!glslify-loader!./shaders/tonemapping.glsl");
-const shaderFunctions = require("raw-loader!glslify-loader!./shaders/functions.glsl");
-const animationShader = require("raw-loader!glslify-loader!./shaders/animation.glsl");
-const cubemapVertShader = require("raw-loader!glslify-loader!./shaders/cubemap.vert");
-const cubemapFragShader = require("raw-loader!glslify-loader!./shaders/cubemap.frag");
-
 class gltfRenderer {
   shader: any; // current shader
 
@@ -72,25 +59,6 @@ class gltfRenderer {
     this.opaqueDepthTexture = 0;
     this.opaqueFramebufferWidth = CANVAS_SIZE;
     this.opaqueFramebufferHeight = CANVAS_SIZE;
-
-    const shaderSources = new Map();
-    shaderSources.set("primitive.vert", primitiveShader.default);
-    shaderSources.set("pbr.frag", pbrShader.default);
-    shaderSources.set("material_info.glsl", materialInfoShader.default);
-    shaderSources.set("brdf.glsl", brdfShader.default);
-    shaderSources.set("ibl.glsl", iblShader.default);
-    shaderSources.set("punctual.glsl", punctualShader.default);
-    shaderSources.set("tonemapping.glsl", tonemappingShader.default);
-    shaderSources.set("textures.glsl", texturesShader.default);
-    shaderSources.set("functions.glsl", shaderFunctions.default);
-    shaderSources.set("animation.glsl", animationShader.default);
-    shaderSources.set("cubemap.vert", cubemapVertShader.default);
-    shaderSources.set("cubemap.frag", cubemapFragShader.default);
-
-    // Creates a new ShaderCache object
-    // side effect: update shader sources with #includes<> substituted
-    // with actual code
-    this.shaderCache = new ShaderCache(shaderSources, this.webGPU);
 
     // * in the Khronos implementation, here we will specify required webGL
     // * extensions, and load them. We are using WebGPU, so we don't have them here
@@ -169,6 +137,8 @@ class gltfRenderer {
 
       for (const drawable of this.opaqueDrawables) {
         const primitive = drawable.primitive;
+        const node = drawable.node;
+        const material = state.gltf.materials[primitive.material];
         const drawIndexed = primitive.indices !== undefined;
 
         // 🔺 Buffers
@@ -187,20 +157,37 @@ class gltfRenderer {
         }
         modelMatrix = drawable.node.worldTransform;
         normalMatrix = drawable.node.normalMatrix;
-      }
 
-      // 🖍️ Shaders
-      this.webGPU.createVertexShaderModule();
-      this.webGPU.createFragmentShaderModule();
-      this.webGPU.createPipeline(
-        cameraOption,
-        this.viewMatrix,
-        this.projMatrix,
-        this.viewProjectionMatrix,
-        modelMatrix,
-        normalMatrix
-      );
-      this.initialized = true;
+        // Get shaders's #define
+        let vertDefines: string[] = [];
+        this.pushVertParameterDefines(
+          vertDefines,
+          state.renderingParameters,
+          state.gltf,
+          node,
+          primitive
+        );
+        vertDefines = primitive.getDefines().concat(vertDefines);
+
+        let fragDefines: string[] = material
+          .getDefines(state.renderingParameters)
+          .concat(vertDefines);
+        this.pushFragParameterDefines(fragDefines, state);
+        this.webGPU.createVertexShaderModule(vertDefines);
+        this.webGPU.createFragmentShaderModule(fragDefines);
+        // 🖍️ Shaders
+
+        this.webGPU.createPipeline(
+          cameraOption,
+          this.viewMatrix,
+          this.projMatrix,
+          this.viewProjectionMatrix,
+          modelMatrix,
+          normalMatrix,
+          material
+        );
+        this.initialized = true;
+      }
     }
   }
 

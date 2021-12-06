@@ -7,3 +7,10 @@ Existing shaders in Khronos are NOT compatible with WebGPU. To make it work, we 
 Assumptions:
 
 1. positions and normals always have GPUVertexFormat set to float32x3
+
+Bind points:
+
+set=0, binding=0: VertexUniforms in primitive.vert
+set=0, binding=1: LightUniforms in punctual.glsl
+
+The Map object holds key-value pairs and remembers the original insertion order of the keys.

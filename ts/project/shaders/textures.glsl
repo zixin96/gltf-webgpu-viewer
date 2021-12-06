@@ -1,37 +1,42 @@
 // IBL
+precision lowp sampler;
 
+layout(set=0, binding=13) uniform IBLTexture {
+    int u_MipCount;
+    mat3 u_EnvRotation;
+};
 
-uniform int u_MipCount;
-uniform samplerCube u_LambertianEnvSampler;
-uniform samplerCube u_GGXEnvSampler;
-uniform sampler2D u_GGXLUT;
-uniform samplerCube u_CharlieEnvSampler;
-uniform sampler2D u_CharlieLUT;
-uniform sampler2D u_SheenELUT;
-uniform mat3 u_EnvRotation;
-
+layout(set=0, binding=14)    uniform sampler u_LambertianEnvSampler;
+layout(set=0, binding=15)   uniform sampler u_GGXEnvSampler;
+layout(set=0, binding=16)    uniform sampler u_GGXLUT;
+layout(set=0, binding=17)   uniform sampler u_CharlieEnvSampler;
+layout(set=0, binding=18)    uniform sampler u_CharlieLUT;
+layout(set=0, binding=19)   uniform sampler u_SheenELUT;
 
 // General Material
+layout(set=0, binding=20)  uniform sampler u_NormalSampler;
+layout(set=0, binding=21)  uniform    sampler u_EmissiveSampler;
+layout(set=0, binding=22)  uniform       sampler u_OcclusionSampler;
+
+layout(set=0, binding=23) uniform GeneralMaterial {
+
+    float u_NormalScale;
+    int u_NormalUVSet;
+    mat3 u_NormalUVTransform;
+
+    int u_EmissiveUVSet;
+    mat3 u_EmissiveUVTransform;
+
+    int u_OcclusionUVSet;
+    float u_OcclusionStrength;
+    mat3 u_OcclusionUVTransform;
+};
 
 
-uniform sampler2D u_NormalSampler;
-uniform float u_NormalScale;
-uniform int u_NormalUVSet;
-uniform mat3 u_NormalUVTransform;
-
-uniform vec3 u_EmissiveFactor;
-uniform sampler2D u_EmissiveSampler;
-uniform int u_EmissiveUVSet;
-uniform mat3 u_EmissiveUVTransform;
-
-uniform sampler2D u_OcclusionSampler;
-uniform int u_OcclusionUVSet;
-uniform float u_OcclusionStrength;
-uniform mat3 u_OcclusionUVTransform;
 
 
-in vec2 v_texcoord_0;
-in vec2 v_texcoord_1;
+layout(location=2) in vec2 v_texcoord_0;
+layout(location=3) in vec2 v_texcoord_1;
 
 
 vec2 getNormalUV()
@@ -75,13 +80,22 @@ vec2 getOcclusionUV()
 
 #ifdef MATERIAL_METALLICROUGHNESS
 
-uniform sampler2D u_BaseColorSampler;
-uniform int u_BaseColorUVSet;
-uniform mat3 u_BaseColorUVTransform;
+layout(set=0, binding=24)   uniform sampler u_BaseColorSampler;
+layout(set=0, binding=25)   uniform sampler u_MetallicRoughnessSampler;
 
-uniform sampler2D u_MetallicRoughnessSampler;
-uniform int u_MetallicRoughnessUVSet;
-uniform mat3 u_MetallicRoughnessUVTransform;
+layout(set=0, binding=26) uniform MMR {
+
+    int u_BaseColorUVSet;
+    mat3 u_BaseColorUVTransform;
+
+    int u_MetallicRoughnessUVSet;
+    mat3 u_MetallicRoughnessUVTransform;
+};
+
+layout(set=0, binding=27) uniform EmissiveFactor {
+    vec3 u_EmissiveFactor;
+};  
+
 
 vec2 getBaseColorUV()
 {
@@ -113,11 +127,11 @@ vec2 getMetallicRoughnessUV()
 
 #ifdef MATERIAL_SPECULARGLOSSINESS
 
-uniform sampler2D u_DiffuseSampler;
+uniform sampler u_DiffuseSampler;
 uniform int u_DiffuseUVSet;
 uniform mat3 u_DiffuseUVTransform;
 
-uniform sampler2D u_SpecularGlossinessSampler;
+uniform sampler u_SpecularGlossinessSampler;
 uniform int u_SpecularGlossinessUVSet;
 uniform mat3 u_SpecularGlossinessUVTransform;
 
@@ -152,15 +166,15 @@ vec2 getDiffuseUV()
 
 #ifdef MATERIAL_CLEARCOAT
 
-uniform sampler2D u_ClearcoatSampler;
+uniform sampler u_ClearcoatSampler;
 uniform int u_ClearcoatUVSet;
 uniform mat3 u_ClearcoatUVTransform;
 
-uniform sampler2D u_ClearcoatRoughnessSampler;
+uniform sampler u_ClearcoatRoughnessSampler;
 uniform int u_ClearcoatRoughnessUVSet;
 uniform mat3 u_ClearcoatRoughnessUVTransform;
 
-uniform sampler2D u_ClearcoatNormalSampler;
+uniform sampler u_ClearcoatNormalSampler;
 uniform int u_ClearcoatNormalUVSet;
 uniform mat3 u_ClearcoatNormalUVTransform;
 uniform float u_ClearcoatNormalScale;
@@ -201,10 +215,10 @@ vec2 getClearcoatNormalUV()
 
 #ifdef MATERIAL_SHEEN
 
-uniform sampler2D u_SheenColorSampler;
+uniform sampler u_SheenColorSampler;
 uniform int u_SheenColorUVSet;
 uniform mat3 u_SheenColorUVTransform;
-uniform sampler2D u_SheenRoughnessSampler;
+uniform sampler u_SheenRoughnessSampler;
 uniform int u_SheenRoughnessUVSet;
 uniform mat3 u_SheenRoughnessUVTransform;
 
@@ -235,10 +249,10 @@ vec2 getSheenRoughnessUV()
 
 #ifdef MATERIAL_SPECULAR
 
-uniform sampler2D u_SpecularSampler;
+uniform sampler u_SpecularSampler;
 uniform int u_SpecularUVSet;
 uniform mat3 u_SpecularUVTransform;
-uniform sampler2D u_SpecularColorSampler;
+uniform sampler u_SpecularColorSampler;
 uniform int u_SpecularColorUVSet;
 uniform mat3 u_SpecularColorUVTransform;
 
@@ -269,10 +283,10 @@ vec2 getSpecularColorUV()
 
 #ifdef MATERIAL_TRANSMISSION
 
-uniform sampler2D u_TransmissionSampler;
+uniform sampler u_TransmissionSampler;
 uniform int u_TransmissionUVSet;
 uniform mat3 u_TransmissionUVTransform;
-uniform sampler2D u_TransmissionFramebufferSampler;
+uniform sampler u_TransmissionFramebufferSampler;
 uniform ivec2 u_TransmissionFramebufferSize;
 
 
@@ -293,7 +307,7 @@ vec2 getTransmissionUV()
 
 #ifdef MATERIAL_VOLUME
 
-uniform sampler2D u_ThicknessSampler;
+uniform sampler u_ThicknessSampler;
 uniform int u_ThicknessUVSet;
 uniform mat3 u_ThicknessUVTransform;
 

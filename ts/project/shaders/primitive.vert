@@ -1,16 +1,16 @@
-#include <animation.glsl>
+
+layout(set=0, binding=0) uniform VertexUniforms {
+    mat4 u_ViewProjectionMatrix;
+    mat4 u_ModelMatrix;               
+    mat4 u_NormalMatrix;
+};
 
 
-uniform mat4 u_ViewProjectionMatrix;
-uniform mat4 u_ModelMatrix;
-uniform mat4 u_NormalMatrix;
-
-
-in vec3 a_position;
-out vec3 v_Position;
+layout(location=0) in vec3 a_position;
+layout(location=0) out vec3 v_Position;
 
 #ifdef HAS_NORMAL_VEC3
-in vec3 a_normal;
+layout(location=1) in vec3 a_normal;
 #endif
 
 #ifdef HAS_NORMAL_VEC3
@@ -18,7 +18,7 @@ in vec3 a_normal;
 in vec4 a_tangent;
 out mat3 v_TBN;
 #else
-out vec3 v_Normal;
+layout(location=1) out vec3 v_Normal;
 #endif
 #endif
 
@@ -30,8 +30,8 @@ in vec2 a_texcoord_0;
 in vec2 a_texcoord_1;
 #endif
 
-out vec2 v_texcoord_0;
-out vec2 v_texcoord_1;
+layout(location=2) out vec2 v_texcoord_0;
+layout(location=3) out vec2 v_texcoord_1;
 
 #ifdef HAS_COLOR_0_VEC3
 in vec3 a_color_0;
@@ -114,9 +114,6 @@ void main()
     v_Normal = normalize(vec3(u_NormalMatrix * vec4(getNormal(), 0.0)));
 #endif
 #endif
-
-    v_texcoord_0 = vec2(0.0, 0.0);
-    v_texcoord_1 = vec2(0.0, 0.0);
 
 #ifdef HAS_TEXCOORD_0_VEC2
     v_texcoord_0 = a_texcoord_0;

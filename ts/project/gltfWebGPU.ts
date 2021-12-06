@@ -1,8 +1,22 @@
 import { mat4, vec3 } from "gl-matrix";
-import { FOVY, NEAR_PLANE, FAR_PLANE } from "./constants";
+import { gltfMaterial } from "./gltf/gltfMaterial";
+
 const createCamera = require("3d-view-controls");
-const simpleVertShader = require("raw-loader!glslify-loader!./shaders/simple.vert");
-const simpleFragShader = require("raw-loader!glslify-loader!./shaders/simple.frag");
+// PBR shaders
+const pbrShader = require("raw-loader!glslify-loader!./shaders/pbr.frag");
+const brdfShader = require("raw-loader!glslify-loader!./shaders/brdf.glsl");
+const materialInfoShader = require("raw-loader!glslify-loader!./shaders/material_info.glsl");
+const punctualShader = require("raw-loader!glslify-loader!./shaders/punctual.glsl");
+const primitiveShader = require("raw-loader!glslify-loader!./shaders/primitive.vert");
+const shaderFunctions = require("raw-loader!glslify-loader!./shaders/functions.glsl");
+const texturesShader = require("raw-loader!glslify-loader!./shaders/textures.glsl");
+const tonemappingShader = require("raw-loader!glslify-loader!./shaders/tonemapping.glsl");
+
+const uniformBindingNumMap = new Map();
+uniformBindingNumMap.set("u_MetallicFactor", 2);
+uniformBindingNumMap.set("u_RoughnessFactor", 2);
+uniformBindingNumMap.set("u_BaseColorFactor", 2);
+uniformBindingNumMap.set("u_EmissiveFactor", 27);
 
 class gltfWebGPU {
   public static CameraPosition: vec3 = [2, 2, 4];
@@ -43,6 +57,7 @@ class gltfWebGPU {
   pipeline!: GPURenderPipeline;
   sceneUniformBindGroup!: GPUBindGroup;
   indexCount!: number;
+  shaderSources!: any;
 
   commandEncoder!: GPUCommandEncoder;
   passEncoder!: GPURenderPassEncoder;
@@ -80,6 +95,61 @@ class gltfWebGPU {
 
     this.depthTexture = this.device.createTexture(depthTextureDesc);
     this.depthTextureView = this.depthTexture.createView();
+
+    this.createShaders();
+  }
+
+  createShaders() {
+    this.shaderSources = new Map();
+    this.shaderSources.set("primitive.vert", primitiveShader.default);
+    this.shaderSources.set("pbr.frag", pbrShader.default);
+    this.shaderSources.set("material_info.glsl", materialInfoShader.default);
+    this.shaderSources.set("brdf.glsl", brdfShader.default);
+    this.shaderSources.set("punctual.glsl", punctualShader.default);
+    this.shaderSources.set("functions.glsl", shaderFunctions.default);
+    this.shaderSources.set("textures.glsl", texturesShader.default);
+    this.shaderSources.set("tonemapping.glsl", tonemappingShader.default);
+    this.updateShadersWithIncludes();
+  }
+
+  updateShadersWithIncludes() {
+    // resovle / expande sources
+    for (let [key, src] of this.shaderSources) {
+      let changed = false;
+      for (let [includeName, includeSource] of this.shaderSources) {
+        const pattern = "#include <" + includeName + ">";
+
+        if (src.includes(pattern)) {
+          // only replace the first occurance
+          src = src.replace(pattern, includeSource);
+
+          // remove the others
+          while (src.includes(pattern)) {
+            src = src.replace(pattern, "");
+          }
+
+          changed = true;
+        }
+      }
+
+      if (changed) {
+        this.shaderSources.set(key, src);
+      }
+    }
+  }
+
+  updateShadersWithDefines(shaderIdentifier: any, permutationDefines: any) {
+    const src = this.shaderSources.get(shaderIdentifier);
+    if (src === undefined) {
+      console.log("Shader source for " + shaderIdentifier + " not found");
+      return null;
+    }
+    let defines = "#version 310 es\n";
+    for (let define of permutationDefines) {
+      defines += "#define " + define + "\n";
+    }
+
+    this.shaderSources.set(shaderIdentifier, defines + src);
   }
 
   createWebGPUBuffer(arr: Float32Array | Uint16Array, usage: number) {
@@ -177,61 +247,26 @@ class gltfWebGPU {
     return true;
   }
 
-  createVertexShaderModule() {
+  createVertexShaderModule(defines: any) {
+    this.updateShadersWithDefines("primitive.vert", defines);
     const shaderModuleDesc = {
-      code: this.glslang.compileGLSL(simpleVertShader.default, "vertex"),
+      code: this.glslang.compileGLSL(
+        this.shaderSources.get("primitive.vert"),
+        "vertex"
+      ),
     };
     this.vertModule = this.device.createShaderModule(shaderModuleDesc);
   }
 
-  createFragmentShaderModule() {
+  createFragmentShaderModule(defines: any) {
+    this.updateShadersWithDefines("pbr.frag", defines);
     const shaderModuleDesc = {
-      code: this.glslang.compileGLSL(simpleFragShader.default, "fragment"),
+      code: this.glslang.compileGLSL(
+        this.shaderSources.get("pbr.frag"),
+        "fragment"
+      ),
     };
     this.fragModule = this.device.createShaderModule(shaderModuleDesc);
-  }
-
-  public static CreateViewProjection(
-    isPerspective: boolean,
-    aspectRatio: number
-  ) {
-    const viewMatrix = mat4.create();
-    const projectionMatrix = mat4.create();
-    const viewProjectionMatrix = mat4.create();
-
-    if (isPerspective) {
-      mat4.perspective(
-        projectionMatrix,
-        FOVY,
-        aspectRatio,
-        NEAR_PLANE,
-        FAR_PLANE
-      );
-    } else {
-      mat4.ortho(projectionMatrix, -4, 4, -3, 3, -1, 6);
-    }
-
-    mat4.lookAt(
-      viewMatrix,
-      this.CameraPosition,
-      this.LookDirection,
-      this.UpDirection
-    );
-    mat4.multiply(viewProjectionMatrix, projectionMatrix, viewMatrix);
-
-    const cameraOption = {
-      eye: this.CameraPosition,
-      center: this.LookDirection,
-      zoomMax: 100,
-      zoomSpeed: 2,
-    };
-
-    return {
-      viewMatrix,
-      projectionMatrix,
-      viewProjectionMatrix,
-      cameraOption,
-    };
   }
 
   createPipeline(
@@ -240,7 +275,8 @@ class gltfWebGPU {
     pMatrix: any,
     vpMatrix: any,
     modelMatrix: any,
-    normalMatrix: any
+    normalMatrix: any,
+    material: gltfMaterial
   ) {
     //uniform data
     this.normalMatrix = normalMatrix;
@@ -299,17 +335,47 @@ class gltfWebGPU {
     this.pipeline = this.device.createRenderPipeline(pipelineDesc);
 
     // 🦄 Uniform Data
-    const VERTEX_UNIFORM_BUFFER_SIZE = 192; // 3 4x4 float matrices: 3 x 4 x 4 x 4 = 192
+    let emissive!: GPUBindGroupEntry;
+    let materialGroupEntry!: GPUBindGroupEntry;
+    let materialArray = new Array();
+    let materialBindingNum!: number;
+    for (let [uniform, val] of material.getProperties().entries()) {
+      const bindingNum = uniformBindingNumMap.get(uniform);
+      if (uniform === "u_EmissiveFactor") {
+        emissive = {
+          binding: bindingNum,
+          resource: {
+            buffer: this.createWebGPUBuffer(
+              val,
+              GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+            ),
+          },
+        };
+      } else {
+        materialBindingNum = uniformBindingNumMap.get(uniform);
+        if (val instanceof Float32Array) {
+          materialArray.push(...val);
+        } else {
+          materialArray.push(val);
+        }
+      }
+    }
+    const materialUniformData = Float32Array.from(materialArray);
+    console.log(materialUniformData);
+    materialGroupEntry = {
+      binding: materialBindingNum,
+      resource: {
+        buffer: this.createWebGPUBuffer(
+          materialUniformData,
+          GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        ),
+      },
+    };
+
     this.vertexUniformBuffer = this.device.createBuffer({
-      size: VERTEX_UNIFORM_BUFFER_SIZE,
+      size: 192,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
-
-    // N/A
-    // const fragmentUniformBuffer = this.device.createBuffer({
-    //   size: 32,
-    //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    // });
 
     this.sceneUniformBindGroup = this.device.createBindGroup({
       layout: this.pipeline.getBindGroupLayout(0),
@@ -318,71 +384,12 @@ class gltfWebGPU {
           binding: 0,
           resource: {
             buffer: this.vertexUniformBuffer,
-            offset: 0,
-            size: VERTEX_UNIFORM_BUFFER_SIZE,
           },
         },
+        emissive,
+        materialGroupEntry,
       ],
     });
-  }
-
-  // ✍️ Write commands to send to the GPU
-  encodeCommands() {
-    let colorAttachment: GPURenderPassColorAttachment = {
-      view: this.colorTextureView,
-      loadValue: [0.0, 0.0, 0.0, 1],
-      storeOp: "store",
-    };
-
-    const depthAttachment: GPURenderPassDepthStencilAttachment = {
-      view: this.depthTextureView,
-      depthLoadValue: 1,
-      depthStoreOp: "store",
-      stencilLoadValue: "load",
-      stencilStoreOp: "store",
-    };
-
-    const renderPassDesc: GPURenderPassDescriptor = {
-      colorAttachments: [colorAttachment],
-      depthStencilAttachment: depthAttachment,
-    };
-
-    this.commandEncoder = this.device.createCommandEncoder();
-
-    // 🖌️ Encode drawing commands
-    this.passEncoder = this.commandEncoder.beginRenderPass(renderPassDesc);
-    this.passEncoder.setPipeline(this.pipeline);
-    this.passEncoder.setViewport(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height,
-      0,
-      1
-    );
-    this.passEncoder.setScissorRect(
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height
-    );
-    this.passEncoder.setVertexBuffer(0, this.positionBuffer);
-    this.passEncoder.setVertexBuffer(1, this.normalBuffer);
-    this.passEncoder.setIndexBuffer(this.indexBuffer, "uint16");
-    console.log(this.indexCount);
-    this.passEncoder.drawIndexed(this.indexCount, 1);
-    this.passEncoder.endPass();
-
-    this.queue.submit([this.commandEncoder.finish()]);
-  }
-
-  renderUsingWebGPU() {
-    // ⏭ Acquire next image from context
-    this.colorTexture = this.context.getCurrentTexture();
-    this.colorTextureView = this.colorTexture.createView();
-
-    // 📦 Write and submit commands to queue
-    this.encodeCommands();
   }
 
   public static CreateTransforms(
@@ -491,32 +498,3 @@ class gltfWebGPU {
 }
 
 export { gltfWebGPU };
-
-/*
-      [[block]] struct Uniforms {
-        u_ViewProjectionMatrix : mat4x4<f32>;
-        u_ModelMatrix : mat4x4<f32>;               
-        u_NormalMatrix : mat4x4<f32>;                
-    };
-    [[binding(0), group(0)]] var<uniform> uniforms : Uniforms;
-    
-    struct Input {
-        [[location(0)]] a_position : vec4<f32>;
-        [[location(1)]] a_normal : vec4<f32>;
-    };
-    
-    struct Output {
-        [[builtin(position)]] Position : vec4<f32>;
-        [[location(0)]] v_Position : vec4<f32>;
-        [[location(1)]] v_Normal : vec4<f32>;
-    };
-
-    [[stage(vertex)]]
-    fn main(input: Input) -> Output {                
-        var output: Output;
-        let mPosition:vec4<f32> = uniforms.u_ModelMatrix * input.a_position; 
-        output.v_Position = mPosition;                  
-        output.v_Normal =  uniforms.u_NormalMatrix * input.a_normal;
-        output.Position = uniforms.u_ViewProjectionMatrix * mPosition;            
-        return output;
-    }*/

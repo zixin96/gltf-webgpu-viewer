@@ -150,6 +150,7 @@ class gltfMaterial extends GltfObject {
     // Set a reasonable default value
     if (this.type !== "SG") {
       this.defines.push("MATERIAL_METALLICROUGHNESS 1");
+      // ! Order matters: basecolorFactor first to avoid paddings
       this.properties.set("u_BaseColorFactor", vec4.fromValues(1, 1, 1, 1));
       this.properties.set("u_MetallicFactor", 1);
       this.properties.set("u_RoughnessFactor", 1);
