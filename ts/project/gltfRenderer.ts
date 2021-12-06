@@ -23,6 +23,7 @@ class gltfRenderer {
   opaqueDrawables: any;
 
   preparedScene: any;
+  cameraOptions!: any;
 
   constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
     // initialize gltfRenderer with a new gltfWebGPU, passing in HTMLCanvasElement, GPUDevice, and Glslang
@@ -62,88 +63,73 @@ class gltfRenderer {
   }
 
   init(state: any, scene: any) {
-    this.prepareScene(state, scene); // prepare this.opaqueDrawables
-
-    let currentCamera = state.userCamera;
-    currentCamera.aspectRatio = 1;
-
-    this.projMatrix = currentCamera.getProjectionMatrix();
-    this.viewMatrix = currentCamera.getViewMatrix(state.gltf);
-    this.currentCameraPosition = currentCamera.getPosition(state.gltf);
-
-    mat4.multiply(this.viewProjectionMatrix, this.projMatrix, this.viewMatrix);
-
-    // used in 3d-view-control
-    const cameraOption = {
-      eye: this.currentCameraPosition,
-      center: currentCamera.getLookDirection(),
-      zoomMax: 1000,
-      zoomSpeed: 2,
-    };
-
+    // 📷 camera
+    this.prepareCamera(state);
     // 💡 lights
     this.visibleLights.push(this.lightKey);
     this.visibleLights.push(this.lightFill);
-
     if (state.renderingParameters.usePunctual) {
       this.applyLights(state.gltf);
     }
 
-    let modelMatrix;
-    let normalMatrix;
+    this.prepareScene(state, scene); // prepare this.opaqueDrawables
+    const drawable = this.opaqueDrawables[0]; // assume there is a single drawable in the scene
+    const primitive = drawable.primitive;
+    const node = drawable.node;
+    const material = state.gltf.materials[primitive.material];
+    const drawIndexed = primitive.indices !== undefined;
 
-    for (const drawable of this.opaqueDrawables) {
-      const primitive = drawable.primitive;
-      const node = drawable.node;
-      const material = state.gltf.materials[primitive.material];
-      const drawIndexed = primitive.indices !== undefined;
-
-      // 🔺 Buffers
-      // create GPU buffer for indices
-      if (drawIndexed) {
-        if (!this.webGPU.setIndices(state.gltf, primitive.indices)) {
-          return;
-        }
+    // 🔺 Buffers
+    // create GPU buffer for indices
+    if (drawIndexed) {
+      if (!this.webGPU.setIndices(state.gltf, primitive.indices)) {
+        return;
       }
-
-      // create GPU buffer for vertex attributes
-      for (const attribute of primitive.glAttributes) {
-        if (!this.webGPU.setVerticesAttrib(state.gltf, attribute)) {
-          return;
-        }
-      }
-      modelMatrix = drawable.node.worldTransform;
-      normalMatrix = drawable.node.normalMatrix;
-
-      // Get shaders's #define
-      let vertDefines: string[] = [];
-      this.pushVertParameterDefines(
-        vertDefines,
-        state.renderingParameters,
-        state.gltf,
-        node,
-        primitive
-      );
-      vertDefines = primitive.getDefines().concat(vertDefines);
-
-      let fragDefines: string[] = material
-        .getDefines(state.renderingParameters)
-        .concat(vertDefines);
-      this.pushFragParameterDefines(fragDefines, state);
-      this.webGPU.createVertexShaderModule(vertDefines);
-      this.webGPU.createFragmentShaderModule(fragDefines);
-      // 🖍️ Shaders
-      this.webGPU.createPipeline(
-        cameraOption,
-        this.viewMatrix,
-        this.projMatrix,
-        this.viewProjectionMatrix,
-        modelMatrix,
-        normalMatrix,
-        material,
-        fragDefines
-      );
     }
+
+    // create GPU buffer for vertex attributes
+    for (const attribute of primitive.glAttributes) {
+      if (!this.webGPU.setVerticesAttrib(state.gltf, attribute)) {
+        return;
+      }
+    }
+
+    let modelMatrix = drawable.node.worldTransform;
+    let normalMatrix = drawable.node.normalMatrix;
+
+    // Get shaders's #define
+    let vertDefines: any = [];
+    let fragDefines: string[] = material.getDefines(state.renderingParameters);
+    this.pushFragParameterDefines(fragDefines, state);
+    this.webGPU.createVertexShaderModule(vertDefines);
+    this.webGPU.createFragmentShaderModule(fragDefines);
+    // 🖍️ Shaders
+    this.webGPU.createPipeline(
+      this.cameraOptions,
+      this.viewMatrix,
+      this.projMatrix,
+      this.viewProjectionMatrix,
+      modelMatrix,
+      normalMatrix,
+      material,
+      fragDefines
+    );
+  }
+
+  prepareCamera(state: any) {
+    this.projMatrix = state.userCamera.getProjectionMatrix();
+    this.viewMatrix = state.userCamera.getViewMatrix(state.gltf);
+    this.currentCameraPosition = state.userCamera.getPosition(state.gltf);
+
+    mat4.multiply(this.viewProjectionMatrix, this.projMatrix, this.viewMatrix);
+
+    // used in 3d-view-control
+    this.cameraOptions = {
+      eye: this.currentCameraPosition,
+      center: state.userCamera.getLookDirection(),
+      zoomMax: 1000,
+      zoomSpeed: 2,
+    };
   }
 
   /**
@@ -167,40 +153,16 @@ class gltfRenderer {
           ),
         []
       )
-      .filter(({ node, primitive }: any) => primitive.material !== undefined);
+      .filter(({ primitive }: any) => primitive.material !== undefined);
 
     // opaque drawables don't need sorting
-    this.opaqueDrawables = drawables.filter(
-      ({ node, primitive }: any) =>
-        state.gltf.materials[primitive.material].alphaMode !== "BLEND" &&
-        (state.gltf.materials[primitive.material].extensions === undefined ||
-          state.gltf.materials[primitive.material].extensions
-            .KHR_materials_transmission === undefined)
-    );
-  }
-
-  //////////////////////////////////////
-  // Helper functions
-  //////////////////////////////////////
-
-  pushVertParameterDefines(
-    vertDefines: any,
-    parameters: any,
-    gltf: any,
-    node: any,
-    primitive: any
-  ) {
-    // empty for now
+    this.opaqueDrawables = drawables;
   }
 
   pushFragParameterDefines(fragDefines: any, state: any) {
     if (state.renderingParameters.usePunctual) {
       fragDefines.push("USE_PUNCTUAL 1");
       fragDefines.push("LIGHT_COUNT " + this.visibleLights.length);
-    }
-
-    if (state.renderingParameters.useIBL && state.environment) {
-      fragDefines.push("USE_IBL 1");
     }
   }
 

@@ -1,7 +1,7 @@
 import { mat4, vec3 } from "gl-matrix";
 import { gltfMaterial } from "./gltf/gltfMaterial";
-
 const createCamera = require("3d-view-controls");
+
 // PBR shaders
 const pbrShader = require("raw-loader!glslify-loader!./shaders/pbr.frag");
 const brdfShader = require("raw-loader!glslify-loader!./shaders/brdf.glsl");
@@ -379,28 +379,14 @@ class gltfWebGPU {
     let materialArray = new Array();
     let materialBindingNum!: number;
     for (let [uniform, val] of material.getProperties().entries()) {
-      const bindingNum = uniformBindingNumMap.get(uniform);
-      if (uniform === "u_EmissiveFactor") {
-        // emissive = {
-        //   binding: bindingNum,
-        //   resource: {
-        //     buffer: this.createWebGPUBuffer(
-        //       val,
-        //       GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-        //     ),
-        //   },
-        // };
+      materialBindingNum = uniformBindingNumMap.get(uniform);
+      if (val instanceof Float32Array) {
+        materialArray.push(...val);
       } else {
-        materialBindingNum = uniformBindingNumMap.get(uniform);
-        if (val instanceof Float32Array) {
-          materialArray.push(...val);
-        } else {
-          materialArray.push(val);
-        }
+        materialArray.push(val);
       }
     }
     const materialUniformData = Float32Array.from(materialArray);
-
     // uniforms that are not changed per frame can be created using this fashion, and push it to the sceneUniformBindGroup
     materialGroupEntry = {
       binding: materialBindingNum,
@@ -440,50 +426,14 @@ class gltfWebGPU {
             buffer: this.vertexUniformBuffer,
           },
         },
-        // emissive,
         materialGroupEntry,
         cameraGroupEntry,
       ],
     };
 
-    if (fragDefines.includes("USE_PUNCTUAL 1")) {
-      sceneBindGroupDesc.entries.push(this.lightGroupEntry);
-    }
-
+    sceneBindGroupDesc.entries.push(this.lightGroupEntry);
     this.sceneUniformBindGroup =
       this.device.createBindGroup(sceneBindGroupDesc);
-  }
-
-  public static CreateTransforms(
-    modelMat: mat4,
-    translation: vec3,
-    rotation: vec3,
-    scaling: vec3
-  ) {
-    const rotateXMat = mat4.create();
-    const rotateYMat = mat4.create();
-    const rotateZMat = mat4.create();
-    const translateMat = mat4.create();
-    const scaleMat = mat4.create();
-
-    // if rotation, translation or scaling is falsy, default values will be set
-    rotation = rotation || [0, 0, 0];
-    translation = translation || [0, 0, 0];
-    scaling = scaling || [1, 1, 1];
-
-    //perform individual transformations
-    mat4.fromTranslation(translateMat, translation);
-    mat4.fromXRotation(rotateXMat, rotation[0]);
-    mat4.fromYRotation(rotateYMat, rotation[1]);
-    mat4.fromZRotation(rotateZMat, rotation[2]);
-    mat4.fromScaling(scaleMat, scaling);
-
-    //combine all transformation matrices together to form a final transform matrix: modelMat
-    // T * R * S
-    mat4.multiply(modelMat, rotateXMat, scaleMat);
-    mat4.multiply(modelMat, rotateYMat, modelMat);
-    mat4.multiply(modelMat, rotateZMat, modelMat);
-    mat4.multiply(modelMat, translateMat, modelMat);
   }
 
   draw() {
@@ -559,6 +509,38 @@ class gltfWebGPU {
     this.passEncoder.drawIndexed(this.indexCount, 1);
     this.passEncoder.endPass();
     this.device.queue.submit([this.commandEncoder.finish()]);
+  }
+
+  public static CreateTransforms(
+    modelMat: mat4,
+    translation: vec3,
+    rotation: vec3,
+    scaling: vec3
+  ) {
+    const rotateXMat = mat4.create();
+    const rotateYMat = mat4.create();
+    const rotateZMat = mat4.create();
+    const translateMat = mat4.create();
+    const scaleMat = mat4.create();
+
+    // if rotation, translation or scaling is falsy, default values will be set
+    rotation = rotation || [0, 0, 0];
+    translation = translation || [0, 0, 0];
+    scaling = scaling || [1, 1, 1];
+
+    //perform individual transformations
+    mat4.fromTranslation(translateMat, translation);
+    mat4.fromXRotation(rotateXMat, rotation[0]);
+    mat4.fromYRotation(rotateYMat, rotation[1]);
+    mat4.fromZRotation(rotateZMat, rotation[2]);
+    mat4.fromScaling(scaleMat, scaling);
+
+    //combine all transformation matrices together to form a final transform matrix: modelMat
+    // T * R * S
+    mat4.multiply(modelMat, rotateXMat, scaleMat);
+    mat4.multiply(modelMat, rotateYMat, modelMat);
+    mat4.multiply(modelMat, rotateZMat, modelMat);
+    mat4.multiply(modelMat, translateMat, modelMat);
   }
 }
 
