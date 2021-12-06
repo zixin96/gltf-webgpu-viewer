@@ -33,7 +33,7 @@ void main()
     vec3 ef = u_EmissiveFactor;
     vec3 testColor;
     Light light = u_Lights[1];
-    g_finalColor = vec4(light.color, 1.0);
+    g_finalColor = vec4(u_Camera, 1.0);
 //     vec4 baseColor = getBaseColor();
 
 // #if ALPHAMODE == ALPHAMODE_OPAQUE

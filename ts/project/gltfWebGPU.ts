@@ -18,6 +18,7 @@ uniformBindingNumMap.set("u_MetallicFactor", 2);
 uniformBindingNumMap.set("u_RoughnessFactor", 2);
 uniformBindingNumMap.set("u_BaseColorFactor", 2);
 uniformBindingNumMap.set("u_EmissiveFactor", 27);
+uniformBindingNumMap.set("u_Camera", 11);
 
 class gltfWebGPU {
   public static CameraPosition: vec3 = [2, 2, 4];
@@ -31,6 +32,7 @@ class gltfWebGPU {
   lightPosition!: any;
 
   vertexUniformBuffer!: any;
+  cameraUniformBuffer!: any;
 
   modelMatrix!: any;
   rotation!: any;
@@ -321,9 +323,7 @@ class gltfWebGPU {
     this.vpMatrix = vpMatrix;
 
     this.camera = createCamera(this.canvas, cameraOption);
-
     this.eyePosition = new Float32Array(cameraOption.eye);
-    this.lightPosition = this.eyePosition;
 
     // ⚗️ Graphics Pipeline
 
@@ -413,6 +413,18 @@ class gltfWebGPU {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    this.cameraUniformBuffer = this.createWebGPUBuffer(
+      this.eyePosition,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
+
+    const cameraGroupEntry = {
+      binding: uniformBindingNumMap.get("u_Camera"),
+      resource: {
+        buffer: this.cameraUniformBuffer,
+      },
+    };
+
     const sceneBindGroupDesc = {
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
@@ -424,6 +436,7 @@ class gltfWebGPU {
         },
         emissive,
         materialGroupEntry,
+        cameraGroupEntry,
       ],
     };
 
@@ -472,9 +485,12 @@ class gltfWebGPU {
       const pMatrix = this.pMatrix;
       this.vMatrix = this.camera.matrix;
       mat4.multiply(this.vpMatrix, pMatrix, this.vMatrix);
-
       this.eyePosition = new Float32Array(this.camera.eye.flat());
-      this.lightPosition = this.eyePosition;
+      this.device.queue.writeBuffer(
+        this.cameraUniformBuffer,
+        0,
+        this.eyePosition
+      );
       this.device.queue.writeBuffer(
         this.vertexUniformBuffer,
         0,
