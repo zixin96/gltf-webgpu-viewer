@@ -2,13 +2,7 @@ import { initGlForMembers, fromKeys } from "./utils";
 
 // base class for all gltf objects
 class GltfObject {
-  extensions: any;
-  extras: any;
-
-  constructor() {
-    this.extensions = undefined;
-    this.extras = undefined;
-  }
+  constructor() {}
 
   /**
    * Populate GltfObject's properties based on json data

@@ -1,20 +1,19 @@
 import { gltfRenderer } from "./gltfRenderer";
 import { GltfState } from "./GltfState";
 import { ResourceLoader } from "./ResourceLoader";
+
 /**
- * GltfView represents a view on a gltf, e.g. in a canvas
+ * GltfView holds a GPUDevice and gltfRenderer
  */
 class GltfView {
   device: GPUDevice;
   renderer: gltfRenderer;
-  /**
-   * GltfView representing one WebGPU context or in other words one
-   * 3D rendering of the Gltf.
-   * @param context
-   */
+
   constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
+    // initialize GltfView with our GPUDevice
     this.device = device;
-    this.renderer = new gltfRenderer(canvas, this.device, glslang);
+    // initialize GltfView with a new gltfRenderer, passing in HTMLCanvasElement, GPUDevice, and Glslang
+    this.renderer = new gltfRenderer(canvas, device, glslang);
   }
 
   /**

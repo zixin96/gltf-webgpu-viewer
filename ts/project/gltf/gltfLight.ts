@@ -10,7 +10,7 @@ class gltfLight extends GltfObject {
   innerConeAngle: number;
   outerConeAngle: number;
   range: number;
-  name: any;
+  name: string | undefined;
   // non gltf
   node: any;
   //Can be used to overwrite direction from node

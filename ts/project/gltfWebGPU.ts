@@ -74,11 +74,17 @@ class gltfWebGPU {
   lightGroupEntry!: GPUBindGroupEntry;
 
   constructor(canvas: HTMLCanvasElement, device: GPUDevice, glslang: any) {
+    // Initialize gltfWebGPU's HTMLCanvasElement, GPUDevice
     this.canvas = canvas;
     this.device = device;
+
+    // Initialize gltfWebGPU's GPUQueue
     this.queue = this.device.queue;
+
+    // Initialize gltfWebGPU's glslang tool
     this.glslang = glslang;
-    // ⛓️ Swapchain
+
+    // Initialize and configure gltfWebGPU's GPUCanvasContext (⛓️ Swapchain)
     if (!this.context) {
       this.context = this.canvas.getContext(
         "webgpu"
@@ -91,20 +97,19 @@ class gltfWebGPU {
       this.context.configure(canvasConfig);
     }
 
+    // Initialize gltfWebGPU's depth GPUTexture, and initialize its GPUTextureView
     const depthTextureDesc: GPUTextureDescriptor = {
-      size: [this.canvas.width, this.canvas.height, 1],
-      dimension: "2d",
+      size: [this.canvas.width, this.canvas.height, 1], // depth texture is the same size as HTMLCanvasElement
       format: "depth24plus-stencil8",
       usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_SRC,
     };
-
     this.depthTexture = this.device.createTexture(depthTextureDesc);
     this.depthTextureView = this.depthTexture.createView();
 
-    this.createShaders();
+    this.createShadersWithIncludes();
   }
 
-  createShaders() {
+  createShadersWithIncludes() {
     this.shaderSources = new Map();
     this.shaderSources.set("primitive.vert", primitiveShader.default);
     this.shaderSources.set("pbr.frag", pbrShader.default);
@@ -181,19 +186,20 @@ class gltfWebGPU {
    * @returns
    */
   setIndices(gltf: any, accessorIndex: any) {
+    // consider directly use gltfAccessor
     let gltfAccessor = gltf.accessors[accessorIndex];
 
-    if (gltfAccessor.glBuffer === undefined) {
+    if (gltfAccessor.gpuBuffer === undefined) {
       let data = gltfAccessor.getTypedView(gltf);
       if (data === undefined) {
         return false;
       }
       // console.log("indices:", data);
-      gltfAccessor.glBuffer = this.createWebGPUBuffer(
+      gltfAccessor.gpuBuffer = this.createWebGPUBuffer(
         data,
         GPUBufferUsage.INDEX
       );
-      this.indexBuffer = gltfAccessor.glBuffer;
+      this.indexBuffer = gltfAccessor.gpuBuffer;
       this.indexCount = gltfAccessor.count;
     } else {
       // do nothing
@@ -206,12 +212,12 @@ class gltfWebGPU {
     const gltfAccessor = gltf.accessors[attribute.accessor];
     let gltfBufferView = gltf.bufferViews[gltfAccessor.bufferView];
 
-    if (gltfAccessor.glBuffer === undefined) {
+    if (gltfAccessor.gpuBuffer === undefined) {
       let data = gltfAccessor.getTypedView(gltf);
       if (data === undefined) {
         return false;
       }
-      gltfAccessor.glBuffer = this.createWebGPUBuffer(
+      gltfAccessor.gpuBuffer = this.createWebGPUBuffer(
         data,
         GPUBufferUsage.VERTEX
       );
@@ -219,7 +225,7 @@ class gltfWebGPU {
       const format = `float32x3` as GPUVertexFormat;
 
       if (attribute.attribute === "NORMAL") {
-        this.normalBuffer = gltfAccessor.glBuffer;
+        this.normalBuffer = gltfAccessor.gpuBuffer;
         const normalAttribDesc: GPUVertexAttribute = {
           shaderLocation: 1, // assume normal is always at [[location(1)]]
           offset: 0, // ? Should it be always 0?
@@ -234,7 +240,7 @@ class gltfWebGPU {
       }
 
       if (attribute.attribute === "POSITION") {
-        this.positionBuffer = gltfAccessor.glBuffer;
+        this.positionBuffer = gltfAccessor.gpuBuffer;
         const positionAttribDesc: GPUVertexAttribute = {
           shaderLocation: 0, // assume position is always at [[location(0)]]
           offset: 0, // ? Should it be always 0?
@@ -368,22 +374,22 @@ class gltfWebGPU {
     this.pipeline = this.device.createRenderPipeline(pipelineDesc);
 
     // 🦄 Uniform Data
-    let emissive!: GPUBindGroupEntry;
+    // let emissive!: GPUBindGroupEntry;
     let materialGroupEntry!: GPUBindGroupEntry;
     let materialArray = new Array();
     let materialBindingNum!: number;
     for (let [uniform, val] of material.getProperties().entries()) {
       const bindingNum = uniformBindingNumMap.get(uniform);
       if (uniform === "u_EmissiveFactor") {
-        emissive = {
-          binding: bindingNum,
-          resource: {
-            buffer: this.createWebGPUBuffer(
-              val,
-              GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
-            ),
-          },
-        };
+        // emissive = {
+        //   binding: bindingNum,
+        //   resource: {
+        //     buffer: this.createWebGPUBuffer(
+        //       val,
+        //       GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+        //     ),
+        //   },
+        // };
       } else {
         materialBindingNum = uniformBindingNumMap.get(uniform);
         if (val instanceof Float32Array) {
@@ -434,7 +440,7 @@ class gltfWebGPU {
             buffer: this.vertexUniformBuffer,
           },
         },
-        emissive,
+        // emissive,
         materialGroupEntry,
         cameraGroupEntry,
       ],

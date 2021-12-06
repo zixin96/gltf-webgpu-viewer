@@ -1,12 +1,13 @@
 import { GltfObject } from "./GltfObject";
 
 class gltfBufferView extends GltfObject {
-  buffer: any;
-  byteOffset: any;
-  byteLength: any;
-  byteStride: any;
-  target: any;
-  name: any;
+  buffer: number | undefined;
+  byteOffset: number;
+  byteLength: number | undefined;
+  byteStride: number;
+  target: number | undefined;
+
+  name: string | undefined;
 
   constructor() {
     super();

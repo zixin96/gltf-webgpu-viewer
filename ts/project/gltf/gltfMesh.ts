@@ -3,21 +3,14 @@ import { objectsFromJsons } from "./utils";
 import { gltfPrimitive } from "./gltfPrimitive";
 
 class gltfMesh extends GltfObject {
-  primitives: any;
-  name: any;
-  weights: any;
-
-  // non gltf
-  weightsAnimated: any;
+  // supported mesh features
+  primitives: gltfPrimitive[];
+  name: string | undefined;
 
   constructor() {
     super();
     this.primitives = [];
     this.name = undefined;
-    this.weights = [];
-
-    // non gltf
-    this.weightsAnimated = undefined;
   }
 
   fromJson(jsonMesh: any) {
@@ -28,11 +21,6 @@ class gltfMesh extends GltfObject {
     }
 
     this.primitives = objectsFromJsons(jsonMesh.primitives, gltfPrimitive);
-
-    // ! N/A for box
-    if (jsonMesh.weights !== undefined) {
-      // this.weights = jsonMesh.weights;
-    }
   }
 }
 

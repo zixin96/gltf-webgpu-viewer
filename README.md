@@ -14,3 +14,5 @@ set=0, binding=0: VertexUniforms in primitive.vert
 set=0, binding=1: LightUniforms in punctual.glsl
 
 The Map object holds key-value pairs and remembers the original insertion order of the keys.
+
+Whenever there is a new gltf file, see the raw gltf json first to see what top-level properties do we need to support, and add them to glTF class.

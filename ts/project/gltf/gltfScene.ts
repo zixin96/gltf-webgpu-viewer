@@ -24,8 +24,6 @@ class gltfScene extends GltfObject {
    */
   initGl(gltf: glTF, device: GPUDevice) {
     super.initGl(gltf, device);
-
-    // * In kronos, this.imageBasedLight (KHR_lights_image_based) was assigned here
   }
 
   /**

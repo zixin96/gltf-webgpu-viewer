@@ -25,6 +25,7 @@ class ResourceLoader {
    * @param externalFiles
    */
   async loadGltf(gltfFile: string, externalFiles: any = undefined) {
+    // Get the raw unmodified gltf json file
     let json = undefined;
     let filename = "";
     if (typeof gltfFile === "string") {
@@ -37,18 +38,20 @@ class ResourceLoader {
           }
         )
         .then((response) => {
-          json = response.data;
+          json = response.data; // json contains the raw, unmodified gltf files
           filename = gltfFile;
         });
     } else {
       console.error("Passed invalid type to loadGltf " + typeof gltfFile);
     }
 
-    // console.log(json);
-    // console.log(filename);
-    const gltf = new glTF(filename);
+    // Process the raw unmodified gltf json file:
+    // 1. create custom objects out of raw json
+    // 2. call initGl on all applicable objects
+    const gltf = new glTF();
     gltf.fromJson(json); // after this function, gltf has been populated wtih glTFXXX objects. Node world transform has been set to identity matrix
     await gltfLoader.load(gltf, this.view.device);
+    console.log(gltf);
     return gltf;
   }
 }

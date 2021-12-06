@@ -2,11 +2,11 @@ import { GltfObject } from "./GltfObject";
 import axios from "axios";
 
 class gltfBuffer extends GltfObject {
-  uri: any;
-  byteLength: any;
-  name: any;
+  uri: string | undefined;
+  byteLength: number | undefined;
 
   // non gltf
+  name: string | undefined;
   buffer: any; // raw data blob
 
   constructor() {
@@ -48,9 +48,9 @@ class gltfBuffer extends GltfObject {
       return false;
     }
     const self = this;
-    let pureName = self.uri.substr(0, self.uri.indexOf("0"));
+    let pureName = self.uri!.substr(0, self.uri!.indexOf("0"));
     if (pureName === "") {
-      pureName = self.uri.substr(0, self.uri.indexOf("."));
+      pureName = self.uri!.substr(0, self.uri!.indexOf("."));
     }
     // prefix with agile-hamlet to avoid CORS error
     axios

@@ -4,64 +4,53 @@ import { initGlForMembers } from "./utils";
 import { glTF } from "./glTF";
 
 class gltfPrimitive extends GltfObject {
+  // supported primitive features
   attributes: any;
-  targets: any;
-  indices: any;
-  material: any;
-  mode: any;
+  indices: number | undefined;
+  mode: number | undefined;
+  material: number | undefined;
 
   // non gltf
+
+  // an array of objects containing information about a particular attribute
+  // such as attribute name, attribute name in the shader, accessor index
   glAttributes: any;
-  morphTargetTextureInfo: any;
+  // whether to skip this primitive
+  skip: boolean;
+  // is this primitive has normal?
+  hasNormals: boolean;
+
   // defines contain an array of "HAS_NORMAL_VEC3 1" if having normal as vec3, etc.
   // will be useful in shader
-  defines: any;
-  skip: any;
-  hasWeights: any;
-  hasJoints: any;
-  hasNormals: any;
-  hasTangents: any;
-  hasTexcoord: any;
-  hasColor: any;
-
-  // The primitive centroid is used for depth sorting.
-  centroid: any;
+  defines: string[];
 
   constructor() {
     super();
     this.attributes = [];
-    this.targets = [];
     this.indices = undefined;
     this.material = undefined;
-    // this.mode = GL.TRIANGLES;
-    this.mode = undefined; // ! figure out what GL is
+    this.mode = undefined;
 
     // non gltf
     this.glAttributes = [];
-    this.morphTargetTextureInfo = undefined;
     this.defines = [];
     this.skip = true;
-    this.hasWeights = false;
-    this.hasJoints = false;
     this.hasNormals = false;
-    this.hasTangents = false;
-    this.hasTexcoord = false;
-    this.hasColor = false;
-
-    // The primitive centroid is used for depth sorting.
-    this.centroid = undefined;
-  }
-
-  fromJson(jsonPrimitive: any) {
-    super.fromJson(jsonPrimitive);
-
-    if (jsonPrimitive.extensions !== undefined) {
-      // this.fromJsonPrimitiveExtensions(jsonPrimitive.extensions);
-    }
   }
 
   /**
-   *
+   * initialize properties existed in the raw json files
+   * @param jsonPrimitive
+   */
+  fromJson(jsonPrimitive: any) {
+    super.fromJson(jsonPrimitive);
+  }
+
+  /**
+   * 1. assign this primitive a default material if it doesn't have one
+   * 2. initGl for all its member variables
+   * 3. populate glAttributes
+   * 4. populate defines used in shaders
    * @param gltf
    * @param device
    */
@@ -71,7 +60,7 @@ class gltfPrimitive extends GltfObject {
       this.material = gltf.materials.length - 1;
     }
 
-    // ! Note: for box primitive, this does nothing
+    // call initGl for all its member variable if it has one
     initGlForMembers(this, gltf, device);
 
     const maxAttributes = device.limits.maxVertexAttributes;
@@ -102,86 +91,9 @@ class gltfPrimitive extends GltfObject {
         case "NORMAL":
           this.hasNormals = true;
           break;
-        case "TANGENT":
-          this.hasTangents = true;
-          break;
-        case "TEXCOORD_0":
-          this.hasTexcoord = true;
-          break;
-        case "TEXCOORD_1":
-          this.hasTexcoord = true;
-          break;
-        case "COLOR_0":
-          this.hasColor = true;
-          break;
-        case "JOINTS_0":
-          this.hasJoints = true;
-          break;
-        case "WEIGHTS_0":
-          this.hasWeights = true;
-          break;
-        case "JOINTS_1":
-          this.hasJoints = true;
-          break;
-        case "WEIGHTS_1":
-          this.hasWeights = true;
-          break;
         default:
           console.log("Unknown attribute: " + attribute);
       }
-    }
-
-    // ! centroid = (0, 0, 0) for box
-    this.computeCentroid(gltf);
-  }
-
-  computeCentroid(gltf: any) {
-    const positionsAccessor = gltf.accessors[this.attributes.POSITION];
-    const positions = positionsAccessor.getNormalizedTypedView(gltf);
-
-    if (this.indices !== undefined) {
-      // Primitive has indices.
-
-      const indicesAccessor = gltf.accessors[this.indices];
-
-      const indices = indicesAccessor.getTypedView(gltf);
-
-      const acc = new Float32Array(3);
-
-      for (let i = 0; i < indices.length; i++) {
-        const offset = 3 * indices[i];
-        acc[0] += positions[offset];
-        acc[1] += positions[offset + 1];
-        acc[2] += positions[offset + 2];
-      }
-
-      const centroid = new Float32Array([
-        acc[0] / indices.length,
-        acc[1] / indices.length,
-        acc[2] / indices.length,
-      ]);
-
-      this.centroid = centroid;
-    } else {
-      // Primitive does not have indices.
-
-      const acc = new Float32Array(3);
-
-      for (let i = 0; i < positions.length; i += 3) {
-        acc[0] += positions[i];
-        acc[1] += positions[i + 1];
-        acc[2] += positions[i + 2];
-      }
-
-      const positionVectors = positions.length / 3;
-
-      const centroid = new Float32Array([
-        acc[0] / positionVectors,
-        acc[1] / positionVectors,
-        acc[2] / positionVectors,
-      ]);
-
-      this.centroid = centroid;
     }
   }
 

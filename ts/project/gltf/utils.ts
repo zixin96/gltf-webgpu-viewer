@@ -4,27 +4,11 @@ import { gltfAccessor } from "./gltfAccessor";
 
 /**
  * Individual: Populate target object based on jsonObj
- * Whole: populate the following objects (for sample box):
- * glTF,
- * gltfAsset,
- * gltfAccessor (3),
- * gltfMesh,
- * gltfPrimitive,
- * gltfMaterial,
- * gltfBuffer,
- * gltfBufferView (2),
- * gltfScene,
- * gltfNode (2)
- * * Note that these correspond to objects in the glTF file in one-to-one fashion
  * @param target: Empty object waiting to be filled
  * @param jsonObj: input json
  * @param ignore: properties to ignore
  */
 function fromKeys(target: any, jsonObj: any, ignore = []) {
-  //   console.log("target: ", target);
-  //   console.log("jsonObj: ", jsonObj);
-  //   console.log("ignore: ", ignore);
-  // console.log('target key: ', Object.keys(target));
   for (let k of Object.keys(target)) {
     if (
       ignore &&
@@ -39,10 +23,6 @@ function fromKeys(target: any, jsonObj: any, ignore = []) {
       target[normalizedK] = jsonObj[k];
     }
   }
-  //   console.log("target: ", target);
-  //   console.log("jsonObj: ", jsonObj);
-  //   console.log("ignore: ", ignore);
-  //   console.log("-----------------");
 }
 
 /**
@@ -128,21 +108,6 @@ function objectFromJson(jsonObject: any, GltfType: any) {
 /**
  *
  * @param extensions
- * @returns punctual lights if existed
- */
-function getJsonLightsFromExtensions(extensions: any) {
-  if (extensions === undefined) {
-    return [];
-  }
-  if (extensions.KHR_lights_punctual === undefined) {
-    return [];
-  }
-  return extensions.KHR_lights_punctual.lights;
-}
-
-/**
- *
- * @param extensions
  * @returns IBLs if exists
  */
 function getJsonIBLsFromExtensions(extensions: any) {
@@ -153,39 +118,6 @@ function getJsonIBLsFromExtensions(extensions: any) {
     return [];
   }
   return extensions.KHR_lights_image_based.imageBasedLights;
-}
-
-/**
- *
- * @param extensions
- * @returns material variants if existed
- */
-function getJsonVariantsFromExtension(extensions: any) {
-  if (extensions === undefined) {
-    return [];
-  }
-  if (extensions.KHR_materials_variants === undefined) {
-    return [];
-  }
-  return extensions.KHR_materials_variants.variants;
-}
-
-/**
- *
- * @param variants
- * @returns variants that have unique ids
- */
-function enforceVariantsUniqueness(variants: any) {
-  for (let i = 0; i < variants.length; i++) {
-    const name = variants[i].name;
-    for (let j = i + 1; j < variants.length; j++) {
-      if (variants[j].name == name) {
-        variants[j].name += "0"; // Add random character to duplicates
-      }
-    }
-  }
-
-  return variants;
 }
 
 /**
@@ -258,15 +190,15 @@ function getExtentsFromAccessor(
 ) {
   const boxMin = vec3.create();
   let min = jsToGl(accessor.min) as vec3;
-  if (accessor.normalized) {
-    vec3.normalize(min, min);
-  }
+  // if (accessor.normalized) {
+  //   vec3.normalize(min, min);
+  // }
   vec3.transformMat4(boxMin, min, worldTransform);
   const boxMax = vec3.create();
   let max = jsToGl(accessor.max) as vec3;
-  if (accessor.normalized) {
-    vec3.normalize(max, max);
-  }
+  // if (accessor.normalized) {
+  //   vec3.normalize(max, max);
+  // }
   vec3.transformMat4(boxMax, max, worldTransform);
   const center = vec3.create();
   vec3.add(center, boxMax, boxMin);
@@ -283,23 +215,6 @@ function getExtentsFromAccessor(
 // marker interface used to for parsing the uniforms
 class UniformStruct {}
 
-/**
- * Used in shaderCache
- * @param str
- * @param seed
- * @returns
- */
-function stringHash(str: any, seed = 0) {
-  let hash = seed;
-  if (str.length === 0) return hash;
-  for (let i = 0; i < str.length; i++) {
-    let chr = str.charCodeAt(i);
-    hash = (hash << 5) - hash + chr;
-    hash |= 0; // Convert to 32bit integer
-  }
-  return hash;
-}
-
 function clamp(number: any, min: any, max: any) {
   return Math.min(Math.max(number, min), max);
 }
@@ -310,12 +225,8 @@ export {
   jsToGl,
   objectsFromJsons,
   objectFromJson,
-  getJsonLightsFromExtensions,
   getJsonIBLsFromExtensions,
-  getJsonVariantsFromExtension,
-  enforceVariantsUniqueness,
   getSceneExtents,
   UniformStruct,
-  stringHash,
   clamp,
 };
