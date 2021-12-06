@@ -288,9 +288,6 @@ class gltfWebGPU {
       lightArray.push(0); // paddings
       lightArray.push(0); // paddings
     }
-    // let paddings = new Array(20);
-    // lightArray.push(...paddings);
-
     let lightUniformData = Float32Array.from(lightArray);
     //console.log(lightUniformData);
     this.lightGroupEntry = {
@@ -311,7 +308,8 @@ class gltfWebGPU {
     vpMatrix: any,
     modelMatrix: any,
     normalMatrix: any,
-    material: gltfMaterial
+    material: gltfMaterial,
+    fragDefines: any
   ) {
     //uniform data
     this.normalMatrix = normalMatrix;
@@ -415,7 +413,7 @@ class gltfWebGPU {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    this.sceneUniformBindGroup = this.device.createBindGroup({
+    const sceneBindGroupDesc = {
       layout: this.pipeline.getBindGroupLayout(0),
       entries: [
         {
@@ -426,9 +424,15 @@ class gltfWebGPU {
         },
         emissive,
         materialGroupEntry,
-        this.lightGroupEntry,
       ],
-    });
+    };
+
+    if (fragDefines.includes("USE_PUNCTUAL 1")) {
+      sceneBindGroupDesc.entries.push(this.lightGroupEntry);
+    }
+
+    this.sceneUniformBindGroup =
+      this.device.createBindGroup(sceneBindGroupDesc);
   }
 
   public static CreateTransforms(

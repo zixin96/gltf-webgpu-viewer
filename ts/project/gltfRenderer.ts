@@ -192,7 +192,8 @@ class gltfRenderer {
           this.viewProjectionMatrix,
           modelMatrix,
           normalMatrix,
-          material
+          material,
+          fragDefines
         );
         this.initialized = true;
       }

@@ -32,11 +32,8 @@ void main()
     vec4 bc = u_BaseColorFactor;
     vec3 ef = u_EmissiveFactor;
     vec3 testColor;
-    Light light = u_Lights[0];
-    testColor = vec3(light.outerConeCos);
-    // Light light = u_Lights;
-    // testColor = light.color;
-    g_finalColor = vec4(testColor, 1.0);
+    Light light = u_Lights[1];
+    g_finalColor = vec4(light.color, 1.0);
 //     vec4 baseColor = getBaseColor();
 
 // #if ALPHAMODE == ALPHAMODE_OPAQUE
