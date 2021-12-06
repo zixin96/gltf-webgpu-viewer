@@ -89,7 +89,8 @@ vec3 toneMapACES_Hill(vec3 color)
 
 vec3 toneMap(vec3 color)
 {
-    color *= u_Exposure;
+    //color *= u_Exposure;
+    color *= 1.0;
 
 #ifdef TONEMAP_ACES_NARKOWICZ
     color = toneMapACES_Narkowicz(color);

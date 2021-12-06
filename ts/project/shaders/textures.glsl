@@ -41,7 +41,8 @@ layout(location=3) in vec2 v_texcoord_1;
 
 vec2 getNormalUV()
 {
-    vec3 uv = vec3(u_NormalUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
+    // vec3 uv = vec3(u_NormalUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
+    vec3 uv = vec3(0.0, 0.0, 1.0);
 
 #ifdef HAS_NORMAL_UV_TRANSFORM
     uv = u_NormalUVTransform * uv;
