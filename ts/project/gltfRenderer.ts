@@ -94,8 +94,8 @@ class gltfRenderer {
       }
     }
 
-    let modelMatrix = drawable.node.worldTransform;
-    let normalMatrix = drawable.node.normalMatrix;
+    let modelMatrix = node.worldTransform;
+    let normalMatrix = node.normalMatrix;
 
     // Get shaders's #define
     let vertDefines: any = [];

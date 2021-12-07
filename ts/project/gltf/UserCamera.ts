@@ -7,33 +7,22 @@ const PanSpeedDenominator = 3500;
 const MaxNearFarRatio = 10000;
 
 class UserCamera extends gltfCamera {
-  transform: mat4;
-  rotAroundY: number;
-  rotAroundX: number;
-  distance: number;
-  baseDistance: number;
-  zoomExponent: number;
-  zoomFactor: number;
-  orbitSpeed: number;
-  panSpeed: number;
-  sceneExtents: any;
+  transform: mat4 = mat4.create();
+  rotAroundY: number = 0;
+  rotAroundX: number = 0;
+  distance: number = 1;
+  baseDistance: number = 1.0;
+  zoomExponent: number = 5.0;
+  zoomFactor: number = 0.01;
+  orbitSpeed: number = 1 / 180;
+  panSpeed: number = 1;
+  sceneExtents: any = {
+    min: vec3.create(),
+    max: vec3.create(),
+  };
 
   constructor() {
     super();
-
-    this.transform = mat4.create();
-    this.rotAroundY = 0;
-    this.rotAroundX = 0;
-    this.distance = 1;
-    this.baseDistance = 1.0;
-    this.zoomExponent = 5.0;
-    this.zoomFactor = 0.01;
-    this.orbitSpeed = 1 / 180;
-    this.panSpeed = 1;
-    this.sceneExtents = {
-      min: vec3.create(),
-      max: vec3.create(),
-    };
   }
 
   /**

@@ -4,13 +4,11 @@ import { gltfPrimitive } from "./gltfPrimitive";
 
 class gltfMesh extends GltfObject {
   // supported mesh features
-  primitives: gltfPrimitive[];
-  name: string | undefined;
+  primitives: gltfPrimitive[] = [];
+  name: string | undefined = undefined;
 
   constructor() {
     super();
-    this.primitives = [];
-    this.name = undefined;
   }
 
   fromJson(jsonMesh: any) {

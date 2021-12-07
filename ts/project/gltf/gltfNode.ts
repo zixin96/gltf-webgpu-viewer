@@ -3,33 +3,22 @@ import { jsToGl } from "./utils";
 import { GltfObject } from "./GltfObject";
 
 class gltfNode extends GltfObject {
-  children: number[];
-  matrix: any;
-  mesh: number | undefined;
+  children: number[] = [];
+  matrix: any = undefined;
+  mesh: number | undefined = undefined;
 
-  name: any;
+  name: any = undefined;
 
   // non gltf
-  worldTransform: any;
-  inverseWorldTransform: any;
-  normalMatrix: any;
+  worldTransform: any = mat4.create();
+  inverseWorldTransform: any = mat4.create();
+  normalMatrix: any = mat4.create();
   light: any;
-  changed: any; // ? Why do we need this?
-  transform: any;
+  changed: any = true;
+  transform: any = undefined;
 
   constructor() {
     super();
-    this.children = [];
-    this.matrix = undefined;
-    this.name = undefined;
-    this.mesh = undefined;
-
-    // non gltf
-    this.worldTransform = mat4.create();
-    this.inverseWorldTransform = mat4.create();
-    this.normalMatrix = mat4.create();
-    this.light = undefined;
-    this.changed = true;
   }
 
   /**

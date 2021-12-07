@@ -14,30 +14,21 @@ import { GltfObject } from "./GltfObject";
 class glTF extends GltfObject {
   // supported features of the top-level gltf json file
   // ! anything missing here is NOT supported
-  accessors: gltfAccessor[];
-  asset: gltfAsset | undefined;
-  bufferViews: gltfBufferView[];
-  buffers: gltfBuffer[];
-  materials: gltfMaterial[];
-  meshes: gltfMesh[];
-  nodes: gltfNode[];
-  scene: number | undefined;
-  scenes: gltfScene[];
+  accessors: gltfAccessor[] = [];
+  asset: gltfAsset | undefined = undefined;
+  bufferViews: gltfBufferView[] = [];
+  buffers: gltfBuffer[] = [];
+  materials: gltfMaterial[] = [];
+  meshes: gltfMesh[] = [];
+  nodes: gltfNode[] = [];
+  scene: number | undefined = undefined;
+  scenes: gltfScene[] = [];
 
   /**
    * Initialize supported gltf features to dummy values
    */
   constructor() {
     super();
-    this.accessors = [];
-    this.asset = undefined;
-    this.bufferViews = [];
-    this.buffers = [];
-    this.materials = [];
-    this.meshes = [];
-    this.nodes = [];
-    this.scene = undefined;
-    this.scenes = [];
   }
 
   /**

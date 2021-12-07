@@ -2,21 +2,15 @@ import { GltfObject } from "./GltfObject";
 import axios from "axios";
 
 class gltfBuffer extends GltfObject {
-  uri: string | undefined;
-  byteLength: number | undefined;
+  uri: string | undefined = undefined;
+  byteLength: number | undefined = undefined;
 
   // non gltf
-  name: string | undefined;
-  buffer: any; // raw data blob
+  name: string | undefined = undefined;
+  buffer: any = undefined; // raw data blob
 
   constructor() {
     super();
-    this.uri = undefined;
-    this.byteLength = undefined;
-    this.name = undefined;
-
-    // non gltf
-    this.buffer = undefined; // raw data blob
   }
 
   /**

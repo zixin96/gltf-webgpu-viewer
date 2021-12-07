@@ -3,35 +3,23 @@ import { glTF } from "./glTF";
 
 class gltfAccessor extends GltfObject {
   // supported accessor's key words
-  bufferView: number | undefined;
-  byteOffset: number;
-  componentType: number | undefined; // accessor contains this type of elements
-  count: number | undefined;
-  max: number[] | undefined;
-  min: number[] | undefined;
-  type: string | undefined; // accessor contains this kind of element (VEC3, SCALAR, etc. )
+  bufferView: number | undefined = undefined;
+  byteOffset: number = 0;
+  componentType: number | undefined = undefined; // accessor contains this type of elements
+  count: number | undefined = undefined;
+  max: number[] | undefined = undefined;
+  min: number[] | undefined = undefined;
+  type: string | undefined = undefined; // accessor contains this kind of element (VEC3, SCALAR, etc. )
 
   // non gltf
-  gpuBuffer: GPUBuffer | undefined; // each accessor holds the GPUBuffer that contains the data
-  typedView: any; // provides a view to the accessor data in form of a typed array
+  gpuBuffer: GPUBuffer | undefined = undefined; // each accessor holds the GPUBuffer that contains the data
+  typedView: any = undefined; // provides a view to the accessor data in form of a typed array
 
   // for debugging
-  name: string | undefined;
+  name: string | undefined = undefined;
 
   constructor() {
     super();
-    this.bufferView = undefined;
-    this.byteOffset = 0;
-    this.componentType = undefined;
-    this.count = undefined;
-    this.type = undefined;
-    this.max = undefined;
-    this.min = undefined;
-    this.name = undefined;
-
-    // non gltf
-    this.gpuBuffer = undefined;
-    this.typedView = undefined;
   }
 
   getTypedView(gltf: glTF) {

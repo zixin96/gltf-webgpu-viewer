@@ -4,25 +4,18 @@ import { jsToGl, initGlForMembers } from "./utils";
 
 class gltfMaterial extends GltfObject {
   // supported materials features
-  pbrMetallicRoughness: any;
-  name: string | undefined;
+  pbrMetallicRoughness: any = undefined;
+  name: string | undefined = undefined;
 
   // non gltf properties
-  alphaMode: string;
+  alphaMode: string = "OPAQUE";
   // this contains uniform values for this material
-  properties: any;
+  properties: any = new Map();
   // this contains defines for this material
-  defines: any;
+  defines: any = [];
 
   constructor() {
     super();
-    this.name = undefined;
-    this.pbrMetallicRoughness = undefined;
-    this.alphaMode = "OPAQUE";
-
-    // non gltf properties
-    this.properties = new Map();
-    this.defines = [];
   }
 
   fromJson(jsonMaterial: any) {
