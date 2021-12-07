@@ -10,6 +10,9 @@ import { gltfScene } from "./gltfScene";
 import { initGlForMembers, objectsFromJsons, objectFromJson } from "./utils";
 import { gltfAsset } from "./gltfAsset";
 import { GltfObject } from "./GltfObject";
+import { gltfTexture } from "./gltfTexture";
+import { gltfImage } from "./gltfImage";
+import { gltfSampler } from "./gltfSampler";
 
 class glTF extends GltfObject {
   // supported features of the top-level gltf json file
@@ -23,6 +26,11 @@ class glTF extends GltfObject {
   nodes: gltfNode[] = [];
   scene: number | undefined = undefined;
   scenes: gltfScene[] = [];
+
+  // added texture support
+  textures: gltfTexture[] = [];
+  images: gltfImage[] = [];
+  samplers: gltfSampler[] = [];
 
   /**
    * Initialize supported gltf features to dummy values
@@ -48,8 +56,14 @@ class glTF extends GltfObject {
     this.scenes = objectsFromJsons(json.scenes, gltfScene);
     this.nodes = objectsFromJsons(json.nodes, gltfNode);
 
+    // add support for texture
+    this.textures = objectsFromJsons(json.textures, gltfTexture);
+    this.images = objectsFromJsons(json.images, gltfImage);
+    this.samplers = objectsFromJsons(json.samplers, gltfSampler);
+
     // if there are no material provided in the gltf file, use this default one
     this.materials.push(gltfMaterial.createDefault());
+    this.samplers.push(gltfSampler.createDefault());
 
     // choose our scene
     if (json.scenes !== undefined) {
