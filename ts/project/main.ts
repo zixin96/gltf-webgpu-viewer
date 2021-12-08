@@ -1,174 +1,271 @@
-import { WebIO, Texture } from "@gltf-transform/core";
-import { glMatrix } from "gl-matrix";
+import { WebIO } from "@gltf-transform/core";
+import { mat4, vec3 } from "gl-matrix";
+import { Transforms as T3D } from "./transforms";
+import { SimpleTextureShader } from "./shaders";
+import { Textures } from "./Textures";
+
+const createCamera = require("3d-view-controls");
 
 async function main() {
+  const gpu = await T3D.InitWebGPU();
+  const device = gpu.device;
+
+  // Get data from gltf
   const io = new WebIO();
   const doc = await io.read(
     "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
   );
 
-  doc
-    .getRoot()
-    .listMeshes()
-    .forEach((mesh) => {
-      let testArray = mesh
-        .listPrimitives()[0]
-        .getAttribute("POSITION")
-        ?.getElement(1, []);
-      console.log(testArray);
+  const gltfRoot = doc.getRoot();
+  const mesh = gltfRoot.listMeshes()[0];
 
-      const tex = mesh.listPrimitives()[0].getMaterial()?.getBaseColorTexture();
-      const texSize = tex?.getSize();
-      const rawData = tex?.getImage() as Uint8ClampedArray;
-      const imageD = new ImageData(rawData, texSize![0], texSize![1]);
-      const imageBitmap = createImageBitmap(imageD);
-    });
+  // assume there is a single primitive in the scene
+  const primitive = mesh.listPrimitives()[0];
+  const primitiveMaterial = primitive.getMaterial();
+  const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
+  const baseColorTextureInfo = primitiveMaterial?.getBaseColorTextureInfo();
+
+  const vertexData = primitive
+    .getAttribute("POSITION")
+    ?.getArray() as Float32Array;
+  const vertexBuffer = T3D.CreateGPUBuffer(device, vertexData);
+
+  const normalData = primitive
+    .getAttribute("NORMAL")
+    ?.getArray() as Float32Array;
+  const normalBuffer = T3D.CreateGPUBuffer(device, normalData);
+
+  const uvData = primitive
+    .getAttribute("TEXCOORD_0")
+    ?.getArray() as Float32Array;
+  const uvBuffer = T3D.CreateGPUBuffer(device, uvData);
+
+  const indexData = primitive.getIndices()?.getArray() as Uint16Array;
+  const indexBuffer = T3D.CreateGPUBuffer(
+    device,
+    indexData,
+    GPUBufferUsage.INDEX
+  );
+
+  // uniform data
+  const normalMatrix = mat4.create();
+  const modelMatrix = mat4.create();
+  let vMatrix = mat4.create();
+  let vpMatrix = mat4.create();
+  const vp = T3D.CreateViewProjection(
+    true,
+    gpu.canvas.width / gpu.canvas.height
+  );
+  vpMatrix = vp.viewProjectionMatrix;
+
+  let rotation = vec3.fromValues(0, 0, 0);
+  let camera = createCamera(gpu.canvas, vp.cameraOption);
+
+  let eyePosition = new Float32Array(T3D.CameraPosition);
+  let lightPosition = eyePosition;
+
+  //create render pipeline
+  const shader = SimpleTextureShader.wgslShaders();
+  const pipeline = device.createRenderPipeline({
+    vertex: {
+      module: device.createShaderModule({
+        code: shader.vertex,
+      }),
+      entryPoint: "main",
+      buffers: [
+        {
+          arrayStride: 12,
+          attributes: [
+            {
+              shaderLocation: 0,
+              format: "float32x3",
+              offset: 0,
+            },
+          ],
+        },
+        {
+          arrayStride: 12,
+          attributes: [
+            {
+              shaderLocation: 1,
+              format: "float32x3",
+              offset: 0,
+            },
+          ],
+        },
+        {
+          arrayStride: 8,
+          attributes: [
+            {
+              shaderLocation: 2,
+              format: "float32x2",
+              offset: 0,
+            },
+          ],
+        },
+      ],
+    },
+    fragment: {
+      module: device.createShaderModule({
+        code: shader.fragment,
+      }),
+      entryPoint: "main",
+      targets: [
+        {
+          format: gpu.format as GPUTextureFormat,
+        },
+      ],
+    },
+    primitive: {
+      topology: "triangle-list",
+    },
+    depthStencil: {
+      format: "depth24plus",
+      depthWriteEnabled: true,
+      depthCompare: "less",
+    },
+  });
+
+  //create uniform buffer and layout
+  const vertexUniformBuffer = device.createBuffer({
+    size: 192,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  const fragmentUniformBuffer = device.createBuffer({
+    size: 32,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  //get texture and sampler data
+  const ts = await Textures.CreateTexture(
+    device,
+    baseColorTexture!,
+    baseColorTextureInfo!
+  );
+  const sceneUniformBindGroup = device.createBindGroup({
+    layout: pipeline.getBindGroupLayout(0),
+    entries: [
+      {
+        binding: 0,
+        resource: {
+          buffer: vertexUniformBuffer,
+          offset: 0,
+          size: 192,
+        },
+      },
+      {
+        binding: 1,
+        resource: {
+          buffer: fragmentUniformBuffer,
+          offset: 0,
+          size: 32,
+        },
+      },
+      {
+        binding: 2,
+        resource: ts.sampler,
+      },
+      {
+        binding: 3,
+        resource: ts.texture.createView(),
+      },
+    ],
+  });
+
+  //render pass
+  const depthTexture = device.createTexture({
+    size: [gpu.canvas.width, gpu.canvas.height, 1],
+    format: "depth24plus",
+    usage: GPUTextureUsage.RENDER_ATTACHMENT,
+  });
+
+  const renderPassDescription = {
+    colorAttachments: [
+      {
+        view: gpu.context.getCurrentTexture().createView(),
+        loadValue: [0.5, 0.5, 0.8, 1.0],
+        storeOp: "store",
+      },
+    ],
+    depthStencilAttachment: {
+      view: depthTexture.createView(),
+      depthLoadValue: 1,
+      depthStoreOp: "store",
+      stencilLoadValue: 0,
+      stencilStoreOp: "store",
+    },
+  };
+
+  function draw() {
+    if (camera.tick()) {
+      const pMatrix = vp.projectionMatrix;
+      vMatrix = camera.matrix;
+      mat4.multiply(vpMatrix, pMatrix, vMatrix);
+
+      eyePosition = new Float32Array(camera.eye.flat());
+      lightPosition = eyePosition;
+      device.queue.writeBuffer(vertexUniformBuffer, 0, vpMatrix as ArrayBuffer);
+      device.queue.writeBuffer(fragmentUniformBuffer, 0, eyePosition);
+      device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
+    }
+
+    T3D.CreateTransforms(modelMatrix, [0, 0, 0], rotation as vec3, [1, 1, 1]);
+    mat4.invert(normalMatrix, modelMatrix);
+    mat4.transpose(normalMatrix, normalMatrix);
+    device.queue.writeBuffer(
+      vertexUniformBuffer,
+      64,
+      modelMatrix as ArrayBuffer
+    );
+    device.queue.writeBuffer(
+      vertexUniformBuffer,
+      128,
+      normalMatrix as ArrayBuffer
+    );
+
+    renderPassDescription.colorAttachments[0].view = gpu.context
+      .getCurrentTexture()
+      .createView();
+    const commandEncoder = device.createCommandEncoder();
+    const renderPass = commandEncoder.beginRenderPass(
+      renderPassDescription as GPURenderPassDescriptor
+    );
+
+    renderPass.setPipeline(pipeline);
+    renderPass.setVertexBuffer(0, vertexBuffer);
+    renderPass.setVertexBuffer(1, normalBuffer);
+    renderPass.setVertexBuffer(2, uvBuffer);
+    renderPass.setIndexBuffer(indexBuffer, "uint16");
+
+    renderPass.setBindGroup(0, sceneUniformBindGroup);
+    renderPass.drawIndexed(indexData.length, 1);
+    renderPass.endPass();
+    device.queue.submit([commandEncoder.finish()]);
+  }
+  T3D.CreateAnimation(draw, rotation);
 }
 
 main();
-// import { CANVAS_SIZE } from "./constants";
-// import { GltfView } from "./GltfView";
-// import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
-// async function main() {
-//   // get <canvas> from index.html and fix its size to be CANVAS_SIZE x CANVAS_SIZE
-//   const canvas = document.getElementById("canvas-webgpu") as HTMLCanvasElement;
-//   canvas.width = canvas.height = CANVAS_SIZE;
-//   // get a GPUAdapter, GPUDevice, and Glslang (in order to use glsl shaders)
-//   const adapter = await navigator.gpu?.requestAdapter();
-//   const device = (await adapter?.requestDevice()) as GPUDevice;
-//   const glslang = (await glslangModule()) as any;
-//   // create a GltfView
-//   const view = new GltfView(canvas, device, glslang);
-//   // create a ResourceLoader
-//   const resourceLoader = view.createResourceLoader();
-//   // create a GltfState
-//   const state = view.createState();
-//   // load gltf
-//   state.gltf = await resourceLoader.loadGltf("BoxTextured"); // FIXME: user can choose which file to load
-//   // choose the scene to render
-//   const defaultScene = state.gltf.scene;
-//   state.sceneIndex = defaultScene === undefined ? 0 : defaultScene;
-//   if (state.gltf.scenes.length === 0) {
-//     // if there is no scene, return immediately
-//     return;
-//   }
-//   const scene = state.gltf.scenes[state.sceneIndex];
-//   scene.applyTransformHierarchy(state.gltf);
-//   state.userCamera.aspectRatio = canvas.width / canvas.height;
-//   state.userCamera.fitViewToScene(state.gltf, state.sceneIndex);
-//   view.renderer.init(state, scene);
-//   const update = () => {
-//     view.renderer.webGPU.draw();
-//     window.requestAnimationFrame(update);
-//   };
-//   // After this start executing animation loop.
-//   window.requestAnimationFrame(update);
-// }
+// const io = new WebIO();
+// const doc = await io.read(
+//   "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
+// );
 
-// main();
+// doc
+//   .getRoot()
+//   .listMeshes()
+//   .forEach((mesh) => {
+//     let testArray = mesh
+//       .listPrimitives()[0]
+//       .getAttribute("POSITION")
+//       ?.getElement(1, []);
+//     console.log(testArray);
 
-// import * as THREE from "three";
-
-// import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-// import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-// import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader.js";
-// import { RoughnessMipmapper } from "three/examples/jsm/utils/RoughnessMipmapper.js";
-
-// let camera: any, scene: any, renderer: any;
-
-// init();
-// render();
-
-// function init() {
-//   const container = document.createElement("div");
-//   document.body.appendChild(container);
-
-//   camera = new THREE.PerspectiveCamera(
-//     45,
-//     window.innerWidth / window.innerHeight,
-//     0.25,
-//     20
-//   );
-//   camera.position.set(-1.8, 0.6, 2.7);
-
-//   scene = new THREE.Scene();
-
-//   new RGBELoader()
-//     // .setPath("textures/equirectangular/")
-//     .load(
-//       "https://agile-hamlet-83897.herokuapp.com/https://github.com/mrdoob/three.js/raw/dev/examples/textures/equirectangular/royal_esplanade_1k.hdr",
-//       function (texture) {
-//         texture.mapping = THREE.EquirectangularReflectionMapping;
-
-//         scene.background = texture;
-//         scene.environment = texture;
-
-//         render();
-
-//         // model
-
-//         // use of RoughnessMipmapper is optional
-//         const roughnessMipmapper = new RoughnessMipmapper(renderer);
-
-//         // const loader = new GLTFLoader().setPath(
-//         //   "models/gltf/DamagedHelmet/glTF/"
-//         // );
-//         const loader = new GLTFLoader();
-//         loader.load(
-//           "https://agile-hamlet-83897.herokuapp.com/https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/models/gltf/DamagedHelmet/glTF/DamagedHelmet.gltf",
-//           function (gltf) {
-//             console.log(gltf.scene);
-//             console.log(gltf.animations);
-//             console.log(gltf.scenes);
-//             console.log(gltf.cameras);
-//             console.log(gltf.asset);
-
-//             gltf.scene.traverse(function (child: any) {
-//               if (child.isMesh) {
-//                 roughnessMipmapper.generateMipmaps(child.material);
-//               }
-//             });
-
-//             scene.add(gltf.scene);
-
-//             roughnessMipmapper.dispose();
-
-//             render();
-//           }
-//         );
-//       }
-//     );
-
-//   renderer = new THREE.WebGLRenderer({ antialias: true });
-//   renderer.setPixelRatio(window.devicePixelRatio);
-//   renderer.setSize(window.innerWidth, window.innerHeight);
-//   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-//   renderer.toneMappingExposure = 1;
-//   renderer.outputEncoding = THREE.sRGBEncoding;
-//   container.appendChild(renderer.domElement);
-
-//   const controls = new OrbitControls(camera, renderer.domElement);
-//   controls.addEventListener("change", render); // use if there is no animation loop
-//   controls.minDistance = 2;
-//   controls.maxDistance = 10;
-//   controls.target.set(0, 0, -0.2);
-//   controls.update();
-
-//   window.addEventListener("resize", onWindowResize);
-// }
-
-// function onWindowResize() {
-//   camera.aspect = window.innerWidth / window.innerHeight;
-//   camera.updateProjectionMatrix();
-
-//   renderer.setSize(window.innerWidth, window.innerHeight);
-
-//   render();
-// }
-
-// //
-
-// function render() {
-//   renderer.render(scene, camera);
-// }
+//     const tex = mesh.listPrimitives()[0].getMaterial()?.getBaseColorTexture();
+//     const texSize = tex?.getSize();
+//     const rawData = tex?.getImage() as Uint8ClampedArray;
+//     const imageD = new ImageData(rawData, texSize![0], texSize![1]);
+//     const imageBitmap = createImageBitmap(imageD);
+//   });
