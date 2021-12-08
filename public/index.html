@@ -22,9 +22,31 @@
         align-items: center;
         justify-content: center;
       }
+
+      #mycontrols {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: white;
+      }
     </style>
   </head>
   <body>
+    <div id="mycontrols">
+      glTF Models:
+      <select id="gltf-model">
+        <option
+          value="https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
+        >
+          BoxTextured (glb)
+        </option>
+        <option
+          value="https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/Box/glTF-Binary/Box.glb"
+        >
+          Box (glb)
+        </option>
+      </select>
+    </div>
     <canvas id="canvas-webgpu"></canvas>
     <script src="./dist/vendor.js"></script>
     <script src="./dist/main.bundle.js"></script>

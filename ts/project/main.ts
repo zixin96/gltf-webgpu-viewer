@@ -1,4 +1,4 @@
-import { WebIO } from "@gltf-transform/core";
+import { Texture, WebIO, TextureInfo } from "@gltf-transform/core";
 import { mat4, vec3 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
@@ -7,25 +7,46 @@ import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
 
+interface BaseColorTexture {
+  texture: Texture;
+  textureInfo: TextureInfo;
+}
+
 async function main() {
   const gpu = await T3D.InitWebGPU();
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
-
-  // Get data from gltf
   const io = new WebIO();
-  const doc = await io.read(
+
+  let doc = await io.read(
     "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
   );
 
+  const modelList = <HTMLInputElement>document.getElementById("gltf-model");
+  modelList.addEventListener("change", async function () {
+    let uri = modelList.value;
+    // doc = await io.read(`https://agile-hamlet-83897.herokuapp.com/${uri}`);
+    console.log(uri);
+  });
+
+  // Get data from gltf
   const gltfRoot = doc.getRoot();
   const mesh = gltfRoot.listMeshes()[0];
 
   // assume there is a single primitive in the scene
   const primitive = mesh.listPrimitives()[0];
   const primitiveMaterial = primitive.getMaterial();
+
+  let baseColorTextureInterface: BaseColorTexture;
+  let hasBaseColorTexture = false;
   const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
-  const baseColorTextureInfo = primitiveMaterial?.getBaseColorTextureInfo();
+  if (baseColorTexture !== null) {
+    hasBaseColorTexture = true;
+    baseColorTextureInterface = {
+      texture: baseColorTexture as Texture,
+      textureInfo: primitiveMaterial?.getBaseColorTextureInfo() as TextureInfo,
+    };
+  }
 
   const vertexData = primitive
     .getAttribute("POSITION")
@@ -37,10 +58,12 @@ async function main() {
     ?.getArray() as Float32Array;
   const normalBuffer = T3D.CreateGPUBuffer(device, normalData);
 
-  const uvData = primitive
-    .getAttribute("TEXCOORD_0")
-    ?.getArray() as Float32Array;
-  const uvBuffer = T3D.CreateGPUBuffer(device, uvData);
+  if (hasBaseColorTexture) {
+    var uvData = primitive
+      .getAttribute("TEXCOORD_0")
+      ?.getArray() as Float32Array;
+    var uvBuffer = T3D.CreateGPUBuffer(device, uvData);
+  }
 
   const indexData = primitive.getIndices()?.getArray() as Uint16Array;
   const indexBuffer = T3D.CreateGPUBuffer(
@@ -68,44 +91,51 @@ async function main() {
 
   //create render pipeline
   const shader = SimpleTextureShader.glslShaders();
+
+  let gpuVertexBufferLayout = [
+    {
+      arrayStride: 12,
+      attributes: [
+        {
+          shaderLocation: 0,
+          format: "float32x3",
+          offset: 0,
+        },
+      ],
+    },
+    {
+      arrayStride: 12,
+      attributes: [
+        {
+          shaderLocation: 1,
+          format: "float32x3",
+          offset: 0,
+        },
+      ],
+    },
+  ];
+
+  if (hasBaseColorTexture) {
+    gpuVertexBufferLayout.push({
+      arrayStride: 8,
+      attributes: [
+        {
+          shaderLocation: 2,
+          format: "float32x2",
+          offset: 0,
+        },
+      ],
+    });
+  }
+
   const pipeline = device.createRenderPipeline({
     vertex: {
       module: device.createShaderModule({
         code: glslang.compileGLSL(shader.vertex, "vertex"),
       }),
       entryPoint: "main",
-      buffers: [
-        {
-          arrayStride: 12,
-          attributes: [
-            {
-              shaderLocation: 0,
-              format: "float32x3",
-              offset: 0,
-            },
-          ],
-        },
-        {
-          arrayStride: 12,
-          attributes: [
-            {
-              shaderLocation: 1,
-              format: "float32x3",
-              offset: 0,
-            },
-          ],
-        },
-        {
-          arrayStride: 8,
-          attributes: [
-            {
-              shaderLocation: 2,
-              format: "float32x2",
-              offset: 0,
-            },
-          ],
-        },
-      ],
+      // @ts-ignore
+      buffers: gpuVertexBufferLayout,
     },
     fragment: {
       module: device.createShaderModule({
@@ -140,39 +170,46 @@ async function main() {
   });
 
   //get texture and sampler data
-  const ts = await Textures.CreateTexture(
-    device,
-    baseColorTexture!,
-    baseColorTextureInfo!
-  );
+  let bindGroupEntries = [
+    {
+      binding: 0,
+      resource: {
+        buffer: vertexUniformBuffer,
+        offset: 0,
+        size: 192,
+      },
+    },
+    {
+      binding: 1,
+      resource: {
+        buffer: fragmentUniformBuffer,
+        offset: 0,
+        size: 32,
+      },
+    },
+  ];
+
+  if (hasBaseColorTexture) {
+    const ts = await Textures.CreateTexture(
+      device,
+      baseColorTextureInterface!.texture,
+      baseColorTextureInterface!.textureInfo
+    );
+    bindGroupEntries.push({
+      binding: 2,
+      // @ts-ignore
+      resource: ts.sampler,
+    });
+    bindGroupEntries.push({
+      binding: 3,
+      // @ts-ignore
+      resource: ts.texture.createView(),
+    });
+  }
+
   const sceneUniformBindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
-    entries: [
-      {
-        binding: 0,
-        resource: {
-          buffer: vertexUniformBuffer,
-          offset: 0,
-          size: 192,
-        },
-      },
-      {
-        binding: 1,
-        resource: {
-          buffer: fragmentUniformBuffer,
-          offset: 0,
-          size: 32,
-        },
-      },
-      {
-        binding: 2,
-        resource: ts.sampler,
-      },
-      {
-        binding: 3,
-        resource: ts.texture.createView(),
-      },
-    ],
+    entries: bindGroupEntries,
   });
 
   //render pass
@@ -237,7 +274,9 @@ async function main() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, vertexBuffer);
     renderPass.setVertexBuffer(1, normalBuffer);
-    renderPass.setVertexBuffer(2, uvBuffer);
+    if (hasBaseColorTexture) {
+      renderPass.setVertexBuffer(2, uvBuffer);
+    }
     renderPass.setIndexBuffer(indexBuffer, "uint16");
 
     renderPass.setBindGroup(0, sceneUniformBindGroup);
