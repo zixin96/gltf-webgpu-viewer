@@ -1,5 +1,5 @@
 import { Texture, WebIO, TextureInfo, Mesh } from "@gltf-transform/core";
-import { mat4, vec3 } from "gl-matrix";
+import { mat4, vec3, vec4 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
 import { Textures } from "./Textures";
@@ -130,6 +130,19 @@ async function main() {
   ]);
   device.queue.writeBuffer(fragmentUniformIntsBuffer, 0, uniformInts);
 
+  // create fragment vec4 buffer
+  const fragUniformsVec4sSize = 2 * 4 * 4; // 2 vec4s
+  const fragmentUniformVec4sBuffer = device.createBuffer({
+    size: fragUniformsVec4sSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  const baseColorFactor = new Float32Array(
+    primitiveMaterial?.getBaseColorFactor() as vec4
+  );
+  const diffuseFactor = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
+  const uniformVec4s = new Float32Array([...baseColorFactor, ...diffuseFactor]);
+  device.queue.writeBuffer(fragmentUniformVec4sBuffer, 0, uniformVec4s);
+
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
       binding: 0,
@@ -153,6 +166,14 @@ async function main() {
         buffer: fragmentUniformIntsBuffer,
         offset: 0,
         size: fragUniformsIntsSize,
+      },
+    },
+    {
+      binding: 3,
+      resource: {
+        buffer: fragmentUniformVec4sBuffer,
+        offset: 0,
+        size: fragUniformsVec4sSize,
       },
     },
   ];

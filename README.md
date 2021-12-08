@@ -25,3 +25,5 @@ localhost/:1
 - While calling [Device].CreateBindGroup([BindGroupDescriptor]).
 
 This error is because we didn't use uniform variables in the main() functions
+
+If the console says error is on 168, it is actually on 167
