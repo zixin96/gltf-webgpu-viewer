@@ -87,11 +87,11 @@ layout(set=0, binding=1) uniform FragmentFloats {
     float u_OcclusionStrength;
 };
 
-// layout(set=0, binding=2) uniform FragmentInts {
-//     int u_NormalUVSet; // check
-//     int u_EmissiveUVSet; // check
-//     int u_OcclusionUVSet; // check
-// };
+layout(set=0, binding=2) uniform FragmentInts {
+    int u_NormalUVSet; // check
+    int u_EmissiveUVSet; // check
+    int u_OcclusionUVSet; // check
+};
 
 // layout(set=0, binding=3) uniform FragmentVec4s {
 //     vec4 u_BaseColorFactor; // check
@@ -163,7 +163,7 @@ layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 void main()
 {
     vec3 textureColor =  texture(sampler2D(u_BaseColorData, u_BaseColorSampler), v_texcoord_0).rgb;
-    g_finalColor = vec4(u_Exposure, 0.0, 0.0, 1.0);
+    g_finalColor = vec4(u_Exposure, u_OcclusionUVSet, 0.0, 1.0);
 }
 
 

@@ -4,6 +4,7 @@ import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
 import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
+import { buffer } from "stream/consumers";
 
 const createCamera = require("3d-view-controls");
 
@@ -89,11 +90,45 @@ async function main() {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
+  // create uniform float buffer
   const fragUniformsFloatsSize = 15 * 4; // 15 floats
   const fragmentUniformFloatsBuffer = device.createBuffer({
     size: fragUniformsFloatsSize,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
+  const uniformFloats = new Float32Array([
+    1.0, // default u_Exposure
+    primitiveMaterial?.getMetallicFactor() as number, // u_MetallicFactor
+    1.0, // default u_RoughnessFactor
+    // TODO: add reasonable default values
+    1.0, // u_GlossinessFactor
+    1.0, // u_SheenRoughnessFactor
+    1.0, // u_ClearcoatFactor
+    1.0, // u_ClearcoatRoughnessFactor
+    1.0, // u_KHR_materials_specular_specularFactor
+    1.0, // u_TransmissionFactor
+    1.0, // u_ThicknessFactor
+    1.0, // u_AttenuationDistance
+    1.0, // u_Ior
+    1.0, // u_AlphaCutoff
+    1.0, // u_NormalScale
+    1.0, // u_OcclusionStrength
+  ]);
+  device.queue.writeBuffer(fragmentUniformFloatsBuffer, 0, uniformFloats);
+
+  // create fragment int buffer
+  const fragUniformsIntsSize = 3 * 4; // 3 ints
+  const fragmentUniformIntsBuffer = device.createBuffer({
+    size: fragUniformsIntsSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  const uniformInts = new Int32Array([
+    // choose the first set of UV coords
+    0, // default u_NormalUVSet
+    0, // default u_EmissiveUVSet
+    0, // default u_OcclusionUVSet
+  ]);
+  device.queue.writeBuffer(fragmentUniformIntsBuffer, 0, uniformInts);
 
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
@@ -112,27 +147,15 @@ async function main() {
         size: fragUniformsFloatsSize,
       },
     },
+    {
+      binding: 2,
+      resource: {
+        buffer: fragmentUniformIntsBuffer,
+        offset: 0,
+        size: fragUniformsIntsSize,
+      },
+    },
   ];
-
-  // populate fragment uniform floats
-  const uniformFloats = new Float32Array([
-    1.0, // u_Exposure
-    1.0, // u_MetallicFactor
-    1.0, // u_RoughnessFactor
-    1.0, // u_GlossinessFactor
-    1.0, // u_SheenRoughnessFactor
-    1.0, // u_ClearcoatFactor
-    1.0, // u_ClearcoatRoughnessFactor
-    1.0, // u_KHR_materials_specular_specularFactor
-    1.0, // u_TransmissionFactor
-    1.0, // u_ThicknessFactor
-    1.0, // u_AttenuationDistance
-    1.0, // u_Ior
-    1.0, // u_AlphaCutoff
-    1.0, // u_NormalScale
-    1.0, // u_OcclusionStrength
-  ]);
-  device.queue.writeBuffer(fragmentUniformFloatsBuffer, 0, uniformFloats);
 
   // create base color texture if it has one
   const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
