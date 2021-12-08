@@ -184,7 +184,7 @@ async function main() {
     colorAttachments: [
       {
         view: gpu.context.getCurrentTexture().createView(),
-        loadValue: [0.5, 0.5, 0.8, 1.0],
+        loadValue: [0.0, 0.0, 0.0, 1.0],
         storeOp: "store",
       },
     ],
