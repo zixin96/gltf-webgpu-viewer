@@ -1,7 +1,7 @@
 import { stringHash } from "./gltf/utils";
 import { gltfShader } from "./gltfShader";
 import { gltfWebGPU } from "./gltfWebGPU";
-
+//
 // This class generates and caches the shader source text for a given permutation
 class ShaderCache {
   sources: Map<string, string>; // shader name -> source code
