@@ -83,31 +83,24 @@ async function main() {
   );
 
   // create uniform buffer and layout
+  const vertexUniformsBufferSize = 4 * 4 * 4 * 3; // 3 mat4 matrices
   const vertexUniformBuffer = device.createBuffer({
-    size: 192,
+    size: vertexUniformsBufferSize,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const fragmentUniformBuffer = device.createBuffer({
-    size: 32,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
+  // const fragmentUniformBuffer = device.createBuffer({
+  //   size: 32,
+  //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  // });
 
-  let bindGroupEntries = [
+  const bindGroupLayout: GPUBindGroupEntry[] = [
     {
       binding: 0,
       resource: {
         buffer: vertexUniformBuffer,
         offset: 0,
-        size: 192,
-      },
-    },
-    {
-      binding: 1,
-      resource: {
-        buffer: fragmentUniformBuffer,
-        offset: 0,
-        size: 32,
+        size: vertexUniformsBufferSize,
       },
     },
   ];
@@ -140,13 +133,12 @@ async function main() {
       baseColorTexture!,
       baseColorTextureInfo!
     );
-
-    bindGroupEntries.push({
+    bindGroupLayout.push({
       binding: 2,
       // @ts-ignore
       resource: ts.sampler,
     });
-    bindGroupEntries.push({
+    bindGroupLayout.push({
       binding: 3,
       // @ts-ignore
       resource: ts.texture.createView(),
@@ -204,7 +196,7 @@ async function main() {
 
   const sceneUniformBindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
-    entries: bindGroupEntries,
+    entries: bindGroupLayout,
   });
 
   //render pass
@@ -240,8 +232,8 @@ async function main() {
       eyePosition = new Float32Array(camera.eye.flat());
       lightPosition = eyePosition;
       device.queue.writeBuffer(vertexUniformBuffer, 0, vpMatrix as ArrayBuffer);
-      device.queue.writeBuffer(fragmentUniformBuffer, 0, eyePosition);
-      device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
+      // device.queue.writeBuffer(fragmentUniformBuffer, 0, eyePosition);
+      // device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
     }
 
     mat4.invert(normalMatrix, modelMatrix);

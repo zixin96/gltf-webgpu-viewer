@@ -16,3 +16,12 @@ set=0, binding=1: LightUniforms in punctual.glsl
 The Map object holds key-value pairs and remembers the original insertion order of the keys.
 
 Whenever there is a new gltf file, see the raw gltf json first to see what top-level properties do we need to support, and add them to glTF class.
+
+localhost/:1
+
+       Number of entries (3) did not match the number of entries (1) specified in [BindGroupLayout]
+
+- While validating [BindGroupDescriptor] against [BindGroupLayout]
+- While calling [Device].CreateBindGroup([BindGroupDescriptor]).
+
+This error is because we didn't use uniform variables in the main() functions
