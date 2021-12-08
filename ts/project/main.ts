@@ -1,4 +1,4 @@
-import { Texture, WebIO, TextureInfo } from "@gltf-transform/core";
+import { Texture, WebIO, TextureInfo, Mesh } from "@gltf-transform/core";
 import { mat4, vec3 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
@@ -6,11 +6,6 @@ import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
-
-interface BaseColorTexture {
-  texture: Texture;
-  textureInfo: TextureInfo;
-}
 
 async function main() {
   const gpu = await T3D.InitWebGPU();
@@ -31,23 +26,21 @@ async function main() {
 
   // Get data from gltf
   const gltfRoot = doc.getRoot();
-  const mesh = gltfRoot.listMeshes()[0];
+
+  // get the single mesh
+  const nodesWithMesh = gltfRoot
+    .listNodes()
+    .filter((node) => (node.getMesh() !== null ? true : false));
+
+  const node = nodesWithMesh[0];
+  const mesh = node.getMesh();
+  const meshWorldMatrix = new Float32Array(node.getWorldMatrix());
 
   // assume there is a single primitive in the scene
-  const primitive = mesh.listPrimitives()[0];
+  const primitive = mesh!.listPrimitives()[0];
   const primitiveMaterial = primitive.getMaterial();
 
-  let baseColorTextureInterface: BaseColorTexture;
-  let hasBaseColorTexture = false;
-  const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
-  if (baseColorTexture !== null) {
-    hasBaseColorTexture = true;
-    baseColorTextureInterface = {
-      texture: baseColorTexture as Texture,
-      textureInfo: primitiveMaterial?.getBaseColorTextureInfo() as TextureInfo,
-    };
-  }
-
+  // create vertex attributes and layout
   const vertexData = primitive
     .getAttribute("POSITION")
     ?.getArray() as Float32Array;
@@ -57,40 +50,6 @@ async function main() {
     .getAttribute("NORMAL")
     ?.getArray() as Float32Array;
   const normalBuffer = T3D.CreateGPUBuffer(device, normalData);
-
-  if (hasBaseColorTexture) {
-    var uvData = primitive
-      .getAttribute("TEXCOORD_0")
-      ?.getArray() as Float32Array;
-    var uvBuffer = T3D.CreateGPUBuffer(device, uvData);
-  }
-
-  const indexData = primitive.getIndices()?.getArray() as Uint16Array;
-  const indexBuffer = T3D.CreateGPUBuffer(
-    device,
-    indexData,
-    GPUBufferUsage.INDEX
-  );
-
-  // uniform data
-  const normalMatrix = mat4.create();
-  const modelMatrix = mat4.create();
-  let vMatrix = mat4.create();
-  let vpMatrix = mat4.create();
-  const vp = T3D.CreateViewProjection(
-    true,
-    gpu.canvas.width / gpu.canvas.height
-  );
-  vpMatrix = vp.viewProjectionMatrix;
-
-  let rotation = vec3.fromValues(0, 0, 0);
-  let camera = createCamera(gpu.canvas, vp.cameraOption);
-
-  let eyePosition = new Float32Array(T3D.CameraPosition);
-  let lightPosition = eyePosition;
-
-  //create render pipeline
-  const shader = SimpleTextureShader.glslShaders();
 
   let gpuVertexBufferLayout = [
     {
@@ -115,7 +74,56 @@ async function main() {
     },
   ];
 
-  if (hasBaseColorTexture) {
+  // create index buffer
+  const indexData = primitive.getIndices()?.getArray() as Uint16Array;
+  const indexBuffer = T3D.CreateGPUBuffer(
+    device,
+    indexData,
+    GPUBufferUsage.INDEX
+  );
+
+  // create uniform buffer and layout
+  const vertexUniformBuffer = device.createBuffer({
+    size: 192,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  const fragmentUniformBuffer = device.createBuffer({
+    size: 32,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+
+  let bindGroupEntries = [
+    {
+      binding: 0,
+      resource: {
+        buffer: vertexUniformBuffer,
+        offset: 0,
+        size: 192,
+      },
+    },
+    {
+      binding: 1,
+      resource: {
+        buffer: fragmentUniformBuffer,
+        offset: 0,
+        size: 32,
+      },
+    },
+  ];
+
+  // create base color texture if it has one
+  const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
+  let hasBaseColorTexture = false;
+  if (baseColorTexture !== null) {
+    hasBaseColorTexture = true;
+    const baseColorTextureInfo = primitiveMaterial?.getBaseColorTextureInfo();
+
+    var uvData = primitive
+      .getAttribute("TEXCOORD_0")
+      ?.getArray() as Float32Array;
+    var uvBuffer = T3D.CreateGPUBuffer(device, uvData);
+
     gpuVertexBufferLayout.push({
       arrayStride: 8,
       attributes: [
@@ -126,8 +134,44 @@ async function main() {
         },
       ],
     });
+
+    const ts = await Textures.CreateTexture(
+      device,
+      baseColorTexture!,
+      baseColorTextureInfo!
+    );
+
+    bindGroupEntries.push({
+      binding: 2,
+      // @ts-ignore
+      resource: ts.sampler,
+    });
+    bindGroupEntries.push({
+      binding: 3,
+      // @ts-ignore
+      resource: ts.texture.createView(),
+    });
   }
 
+  // uniform data
+  const modelMatrix = meshWorldMatrix;
+  const normalMatrix = mat4.create();
+  let vMatrix = mat4.create();
+  let vpMatrix = mat4.create();
+  const vp = T3D.CreateViewProjection(
+    true,
+    gpu.canvas.width / gpu.canvas.height
+  );
+  vpMatrix = vp.viewProjectionMatrix;
+
+  let rotation = vec3.fromValues(0, 0, 0);
+  let camera = createCamera(gpu.canvas, vp.cameraOption);
+
+  let eyePosition = new Float32Array(T3D.CameraPosition);
+  let lightPosition = eyePosition;
+
+  //create render pipeline
+  const shader = SimpleTextureShader.glslShaders();
   const pipeline = device.createRenderPipeline({
     vertex: {
       module: device.createShaderModule({
@@ -157,55 +201,6 @@ async function main() {
       depthCompare: "less",
     },
   });
-
-  //create uniform buffer and layout
-  const vertexUniformBuffer = device.createBuffer({
-    size: 192,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
-
-  const fragmentUniformBuffer = device.createBuffer({
-    size: 32,
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
-
-  //get texture and sampler data
-  let bindGroupEntries = [
-    {
-      binding: 0,
-      resource: {
-        buffer: vertexUniformBuffer,
-        offset: 0,
-        size: 192,
-      },
-    },
-    {
-      binding: 1,
-      resource: {
-        buffer: fragmentUniformBuffer,
-        offset: 0,
-        size: 32,
-      },
-    },
-  ];
-
-  if (hasBaseColorTexture) {
-    const ts = await Textures.CreateTexture(
-      device,
-      baseColorTextureInterface!.texture,
-      baseColorTextureInterface!.textureInfo
-    );
-    bindGroupEntries.push({
-      binding: 2,
-      // @ts-ignore
-      resource: ts.sampler,
-    });
-    bindGroupEntries.push({
-      binding: 3,
-      // @ts-ignore
-      resource: ts.texture.createView(),
-    });
-  }
 
   const sceneUniformBindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
@@ -249,7 +244,6 @@ async function main() {
       device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
     }
 
-    T3D.CreateTransforms(modelMatrix, [0, 0, 0], rotation as vec3, [1, 1, 1]);
     mat4.invert(normalMatrix, modelMatrix);
     mat4.transpose(normalMatrix, normalMatrix);
     device.queue.writeBuffer(
