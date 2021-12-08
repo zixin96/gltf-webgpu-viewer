@@ -83,6 +83,25 @@ async function main() {
     GPUBufferUsage.INDEX
   );
 
+  ////////////////////////////////////
+  // uniforms
+  ////////////////////////////////////
+  const modelMatrix = meshWorldMatrix;
+  const normalMatrix = mat4.create();
+  let vMatrix = mat4.create();
+  let vpMatrix = mat4.create();
+  const vp = T3D.CreateViewProjection(
+    true,
+    gpu.canvas.width / gpu.canvas.height
+  );
+  vpMatrix = vp.viewProjectionMatrix;
+
+  let rotation = vec3.fromValues(0, 0, 0);
+  let camera = createCamera(gpu.canvas, vp.cameraOption);
+
+  let eyePosition = new Float32Array(T3D.CameraPosition);
+  let lightPosition = eyePosition;
+
   // create uniform buffer and layout
   const vertexUniformsBufferSize = 4 * 4 * 4 * 3; // 3 mat4 matrices
   const vertexUniformBuffer = device.createBuffer({
@@ -143,6 +162,29 @@ async function main() {
   const uniformVec4s = new Float32Array([...baseColorFactor, ...diffuseFactor]);
   device.queue.writeBuffer(fragmentUniformVec4sBuffer, 0, uniformVec4s);
 
+  // create fragment vec3 buffer
+  const fragUniformsVec3sSize = 6 * 4 * 4; // 6 vec3s (treated as vec4)
+  const fragmentUniformVec3sBuffer = device.createBuffer({
+    size: fragUniformsVec3sSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  const emissiveFactor = new Float32Array(
+    primitiveMaterial?.getEmissiveFactor() as vec3
+  );
+  console.log(emissiveFactor);
+  const defaultSpecularSheenKHRAttenu = [1.0, 1.0, 1.0, 0.0];
+  const uniformVec3s = new Float32Array([
+    ...emissiveFactor,
+    0.0, // paddings
+    ...eyePosition, // TODO: this is updated by frame, write newest eye position into the fragment shader
+    0.0, // paddings
+    ...defaultSpecularSheenKHRAttenu,
+    ...defaultSpecularSheenKHRAttenu,
+    ...defaultSpecularSheenKHRAttenu,
+    ...defaultSpecularSheenKHRAttenu,
+  ]);
+  device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
+
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
       binding: 0,
@@ -174,6 +216,14 @@ async function main() {
         buffer: fragmentUniformVec4sBuffer,
         offset: 0,
         size: fragUniformsVec4sSize,
+      },
+    },
+    {
+      binding: 4,
+      resource: {
+        buffer: fragmentUniformVec3sBuffer,
+        offset: 0,
+        size: fragUniformsVec3sSize,
       },
     },
   ];
@@ -217,23 +267,6 @@ async function main() {
       resource: ts.texture.createView(),
     });
   }
-
-  // uniform data
-  const modelMatrix = meshWorldMatrix;
-  const normalMatrix = mat4.create();
-  let vMatrix = mat4.create();
-  let vpMatrix = mat4.create();
-  const vp = T3D.CreateViewProjection(
-    true,
-    gpu.canvas.width / gpu.canvas.height
-  );
-  vpMatrix = vp.viewProjectionMatrix;
-
-  let rotation = vec3.fromValues(0, 0, 0);
-  let camera = createCamera(gpu.canvas, vp.cameraOption);
-
-  let eyePosition = new Float32Array(T3D.CameraPosition);
-  let lightPosition = eyePosition;
 
   //create render pipeline
   const shader = SimpleTextureShader.glslShaders();
@@ -305,7 +338,7 @@ async function main() {
       eyePosition = new Float32Array(camera.eye.flat());
       lightPosition = eyePosition;
       device.queue.writeBuffer(vertexUniformBuffer, 0, vpMatrix as ArrayBuffer);
-      // device.queue.writeBuffer(fragmentUniformBuffer, 0, eyePosition);
+      device.queue.writeBuffer(fragmentUniformVec3sBuffer, 16, eyePosition);
       // device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
     }
 

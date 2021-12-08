@@ -98,14 +98,14 @@ layout(set=0, binding=3) uniform FragmentVec4s {
     vec4 u_DiffuseFactor;
 };
 
-// layout(set=0, binding=4) uniform FragmentVec3s {
-//     vec3 u_EmissiveFactor; // check
-//     vec3 u_Camera; // check
-//     vec3 u_SpecularFactor;
-//     vec3 u_SheenColorFactor;
-//     vec3 u_KHR_materials_specular_specularColorFactor;
-//     vec3 u_AttenuationColor;
-// };
+layout(set=0, binding=4) uniform FragmentVec3s {
+    vec3 u_EmissiveFactor; // check
+    vec3 u_Camera; // check
+    vec3 u_SpecularFactor;
+    vec3 u_SheenColorFactor;
+    vec3 u_KHR_materials_specular_specularColorFactor;
+    vec3 u_AttenuationColor;
+};
 
 // layout(set=0, binding=5)  uniform FragmentMat4s {
 //     mat4 u_ModelMatrix;
@@ -165,7 +165,9 @@ void main()
     vec3 textureColor =  texture(sampler2D(u_BaseColorData, u_BaseColorSampler), v_texcoord_0).rgb;
     float temp = u_Exposure;
     int temp2 = u_OcclusionUVSet;
-    g_finalColor = u_DiffuseFactor;
+    vec4 temp3 = u_BaseColorFactor;
+    vec3 temp4 = u_AttenuationColor;
+    g_finalColor = vec4(u_Camera, 0.0);
 }
 
 
