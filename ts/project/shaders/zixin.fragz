@@ -69,62 +69,54 @@ layout(location=3) in vec2 v_texcoord_1;
 
 layout(location = 0) out vec4 g_finalColor;
 
-// layout(set=0, binding=1) uniform FragmentUniforms {
-//     float u_Exposure;
-//     // general material
-//     float u_NormalScale;
-//     int u_NormalUVSet;
-//     mat3 u_NormalUVTransform;
-//     vec3 u_EmissiveFactor;
+layout(set=0, binding=1) uniform FragmentFloats {
+    float u_Exposure; // check
+    float u_MetallicFactor; // check
+    float u_RoughnessFactor; // check
+    float u_GlossinessFactor;
+    float u_SheenRoughnessFactor;
+    float u_ClearcoatFactor;
+    float u_ClearcoatRoughnessFactor;
+    float u_KHR_materials_specular_specularFactor;
+    float u_TransmissionFactor;
+    float u_ThicknessFactor;
+    float u_AttenuationDistance;
+    float u_Ior;
+    float u_AlphaCutoff;
+    float u_NormalScale;
+    float u_OcclusionStrength;
+};
 
-//     int u_EmissiveUVSet;
-//     mat3 u_EmissiveUVTransform;
+// layout(set=0, binding=2) uniform FragmentInts {
+//     int u_NormalUVSet; // check
+//     int u_EmissiveUVSet; // check
+//     int u_OcclusionUVSet; // check
+// };
 
-//     int u_OcclusionUVSet;
-//     float u_OcclusionStrength;
-//     mat3 u_OcclusionUVTransform;
-
-//     // Metallic Roughness
-//     float u_MetallicFactor;
-//     float u_RoughnessFactor;
-//     vec4 u_BaseColorFactor;
-
-//     // Specular Glossiness
-//     vec3 u_SpecularFactor;
+// layout(set=0, binding=3) uniform FragmentVec4s {
+//     vec4 u_BaseColorFactor; // check
 //     vec4 u_DiffuseFactor;
-//     float u_GlossinessFactor;
+// };
 
-//     // Sheen
-//     float u_SheenRoughnessFactor;
+// layout(set=0, binding=4) uniform FragmentVec3s {
+//     vec3 u_EmissiveFactor; // check
+//     vec3 u_Camera; // check
+//     vec3 u_SpecularFactor;
 //     vec3 u_SheenColorFactor;
-
-//     // Clearcoat
-//     float u_ClearcoatFactor;
-//     float u_ClearcoatRoughnessFactor;
-
-//     // Specular
 //     vec3 u_KHR_materials_specular_specularColorFactor;
-//     float u_KHR_materials_specular_specularFactor;
-
-//     // Transmission
-//     float u_TransmissionFactor;
-
-//     // Volume
-//     float u_ThicknessFactor;
 //     vec3 u_AttenuationColor;
-//     float u_AttenuationDistance;
+// };
 
-//     //PBR Next IOR
-//     float u_Ior;
-
-//     // Alpha mode
-//     float u_AlphaCutoff;
-
-//     vec3 u_Camera;
-
+// layout(set=0, binding=5)  uniform FragmentMat4s {
 //     mat4 u_ModelMatrix;
 //     mat4 u_ViewMatrix;
 //     mat4 u_ProjectionMatrix;
+//     mat3 u_NormalUVTransform;
+// };
+
+// layout(set=0, binding=6) uniform FragmentMat3s {
+//     mat3 u_EmissiveUVTransform;
+//     mat3 u_OcclusionUVTransform;
 // };
 
 // general materials
@@ -142,16 +134,10 @@ layout(location = 0) out vec4 g_finalColor;
 // };
 // uniform sampler2D u_MetallicRoughnessSampler;
 
-layout(set=0, binding=2) uniform sampler u_BaseColorSampler;
-layout(set=0, binding=3) uniform texture2D u_BaseColorData;
+layout(set=0, binding=7) uniform sampler u_BaseColorSampler;
+layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 
 #endif
-
-void main()
-{
-    vec3 textureColor =  texture(sampler2D(u_BaseColorData, u_BaseColorSampler), v_texcoord_0).rgb;
-    g_finalColor = vec4(textureColor, 1.0);
-}
 
 // struct Light
 // {
@@ -169,11 +155,16 @@ void main()
 // };
 
 // #ifdef USE_PUNCTUAL
-// layout(set=0, binding=) uniform LightUniforms {
+// layout(set=0, binding=9) uniform LightUniforms {
 //     Light u_Light;
 // };
 // #endif
 
+void main()
+{
+    vec3 textureColor =  texture(sampler2D(u_BaseColorData, u_BaseColorSampler), v_texcoord_0).rgb;
+    g_finalColor = vec4(u_Exposure, 0.0, 0.0, 1.0);
+}
 
 
 // const float GAMMA = 2.2;

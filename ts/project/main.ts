@@ -89,10 +89,11 @@ async function main() {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  // const fragmentUniformBuffer = device.createBuffer({
-  //   size: 32,
-  //   usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  // });
+  const fragUniformsFloatsSize = 15 * 4; // 15 floats
+  const fragmentUniformFloatsBuffer = device.createBuffer({
+    size: fragUniformsFloatsSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
 
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
@@ -103,7 +104,35 @@ async function main() {
         size: vertexUniformsBufferSize,
       },
     },
+    {
+      binding: 1,
+      resource: {
+        buffer: fragmentUniformFloatsBuffer,
+        offset: 0,
+        size: fragUniformsFloatsSize,
+      },
+    },
   ];
+
+  // populate fragment uniform floats
+  const uniformFloats = new Float32Array([
+    1.0, // u_Exposure
+    1.0, // u_MetallicFactor
+    1.0, // u_RoughnessFactor
+    1.0, // u_GlossinessFactor
+    1.0, // u_SheenRoughnessFactor
+    1.0, // u_ClearcoatFactor
+    1.0, // u_ClearcoatRoughnessFactor
+    1.0, // u_KHR_materials_specular_specularFactor
+    1.0, // u_TransmissionFactor
+    1.0, // u_ThicknessFactor
+    1.0, // u_AttenuationDistance
+    1.0, // u_Ior
+    1.0, // u_AlphaCutoff
+    1.0, // u_NormalScale
+    1.0, // u_OcclusionStrength
+  ]);
+  device.queue.writeBuffer(fragmentUniformFloatsBuffer, 0, uniformFloats);
 
   // create base color texture if it has one
   const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
@@ -134,12 +163,12 @@ async function main() {
       baseColorTextureInfo!
     );
     bindGroupLayout.push({
-      binding: 2,
+      binding: 7,
       // @ts-ignore
       resource: ts.sampler,
     });
     bindGroupLayout.push({
-      binding: 3,
+      binding: 8,
       // @ts-ignore
       resource: ts.texture.createView(),
     });
