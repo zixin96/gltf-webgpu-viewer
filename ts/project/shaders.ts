@@ -9,28 +9,7 @@ export class SimpleTextureShader {
 
   public static glslShaders() {
     const vertex = `
-          #version 450
-          layout(location=0) in vec4 position;
-          layout(location=1) in vec4 normal;
-          layout(location=2) in vec2 uv;
-           
-          layout(set=0, binding=0) uniform VertexUniforms {
-              mat4 viewProjectionMatrix;
-              mat4 modelMatrix;               
-              mat4 normalMatrix;
-          };
-  
-          layout(location=0) out vec4 vPosition;
-          layout(location=1) out vec4 vNormal;
-          layout(location=2) out vec2 vUV;
-          
-          void main() {
-              vec4 mPosition = modelMatrix * position;
-              vPosition = mPosition;                
-              vNormal = normalMatrix * normal;     
-              vUV = uv;                        
-              gl_Position = viewProjectionMatrix * mPosition;
-          }`;
+          `;
 
     const fragment = `
           #version 450    
