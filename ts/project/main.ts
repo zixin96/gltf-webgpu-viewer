@@ -3,12 +3,14 @@ import { mat4, vec3 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
 import { Textures } from "./Textures";
+import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
 
 async function main() {
   const gpu = await T3D.InitWebGPU();
   const device = gpu.device;
+  const glslang = (await glslangModule()) as any;
 
   // Get data from gltf
   const io = new WebIO();
@@ -65,11 +67,11 @@ async function main() {
   let lightPosition = eyePosition;
 
   //create render pipeline
-  const shader = SimpleTextureShader.wgslShaders();
+  const shader = SimpleTextureShader.glslShaders();
   const pipeline = device.createRenderPipeline({
     vertex: {
       module: device.createShaderModule({
-        code: shader.vertex,
+        code: glslang.compileGLSL(shader.vertex, "vertex"),
       }),
       entryPoint: "main",
       buffers: [
@@ -107,7 +109,7 @@ async function main() {
     },
     fragment: {
       module: device.createShaderModule({
-        code: shader.fragment,
+        code: glslang.compileGLSL(shader.fragment, "fragment"),
       }),
       entryPoint: "main",
       targets: [
