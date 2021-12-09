@@ -1,6 +1,10 @@
 import { vec2, vec3, mat4, vec4, quat } from "gl-matrix";
 import { FOVY, NEAR_PLANE, FAR_PLANE } from "./config";
 
+var fps = document.getElementById("fps");
+var startTime = Date.now();
+var frame = 0;
+
 export class Transforms {
   public static CameraPosition: vec3 = [2, 2, 4];
   public static LookDirection: vec3 = [0, 0, 0];
@@ -151,6 +155,14 @@ export class Transforms {
     // timeValueMap: any
   ) {
     function step() {
+      var time = Date.now();
+      frame++;
+      if (time - startTime > 1000) {
+        fps!.innerHTML =
+          (frame / ((time - startTime) / 1000)).toFixed(1) + " FPS";
+        startTime = time;
+        frame = 0;
+      }
       if (isAnimation) {
         // // rotation[0] += 0.001;
         // // rotation[1] += 0.001;
