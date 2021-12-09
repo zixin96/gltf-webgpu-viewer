@@ -231,14 +231,13 @@ async function main() {
     device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
 
     // create fragment MRUniforms
-    const fragUniformsMRsSize = 2 * 4; // TODO: since we ignore mat3 in this block, this is temporary
+    const fragUniformsMRsSize = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
     const fragmentUniformMRBuffer = device.createBuffer({
       size: fragUniformsMRsSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     const uniformMRs = new Int32Array([
-      0, // u_MetallicRoughnessUVSet
-      0, // u_BaseColorUVSet
+      0, // u_BaseColorUVSet: textureInfo.getTexCoord()
     ]);
     device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
 
@@ -327,14 +326,14 @@ async function main() {
           size: fragUniformsVec3sSize,
         },
       },
-      // {
-      //   binding: 9,
-      //   resource: {
-      //     buffer: fragmentUniformMRBuffer,
-      //     offset: 0,
-      //     size: fragUniformsMRsSize,
-      //   },
-      // },
+      {
+        binding: 9,
+        resource: {
+          buffer: fragmentUniformMRBuffer,
+          offset: 0,
+          size: fragUniformsMRsSize,
+        },
+      },
       {
         binding: 10,
         resource: {
@@ -366,6 +365,12 @@ async function main() {
         // @ts-ignore
         resource: ts.texture.createView(),
       });
+      // update which tex coord (0 or 1) does this map use
+      device.queue.writeBuffer(
+        fragmentUniformMRBuffer,
+        0, // first integer in the uniform block
+        new Int32Array([baseColorTextureInfo.getTexCoord()])
+      );
     }
 
     const normalTexture = primitiveMaterial.getNormalTexture();
@@ -387,6 +392,12 @@ async function main() {
         // @ts-ignore
         resource: ts.texture.createView(),
       });
+      // update which tex coord (0 or 1) does this map use
+      device.queue.writeBuffer(
+        fragmentUniformIntsBuffer,
+        0, // first integer in the uniform block
+        new Int32Array([normalTextureInfo.getTexCoord()])
+      );
     }
 
     //create render pipeline

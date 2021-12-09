@@ -122,12 +122,12 @@ layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 
 #ifdef MATERIAL_METALLICROUGHNESS
 // MRs
-// layout(set=0, binding=9) uniform MRUniforms {
-//     int u_MetallicRoughnessUVSet; // check
-//     int u_BaseColorUVSet; // check
-//     // mat3 u_MetallicRoughnessUVTransform;
-//     // mat3 u_BaseColorUVTransform;
-// };
+layout(set=0, binding=9) uniform MRUniforms {
+    int u_BaseColorUVSet; 
+    // int u_MetallicRoughnessUVSet; 
+    // mat3 u_MetallicRoughnessUVTransform;
+    // mat3 u_BaseColorUVTransform;
+};
 
 // uniform sampler2D u_MetallicRoughnessSampler;
 
@@ -320,16 +320,16 @@ vec2 getOcclusionUV()
 #ifdef MATERIAL_METALLICROUGHNESS
 
 
-// vec2 getBaseColorUV()
-// {
-//     vec3 uv = vec3(u_BaseColorUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
+vec2 getBaseColorUV()
+{
+    vec3 uv = vec3(u_BaseColorUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
 
-// #ifdef HAS_BASECOLOR_UV_TRANSFORM
-//     uv = u_BaseColorUVTransform * uv;
-// #endif
+#ifdef HAS_BASECOLOR_UV_TRANSFORM
+    uv = u_BaseColorUVTransform * uv;
+#endif
 
-//     return uv.xy;
-// }
+    return uv.xy;
+}
 
 // vec2 getMetallicRoughnessUV()
 // {
@@ -1047,7 +1047,7 @@ vec4 getBaseColor()
 #if defined(MATERIAL_SPECULARGLOSSINESS) && defined(HAS_DIFFUSE_MAP)
     baseColor *= texture(u_DiffuseSampler, getDiffuseUV());
 #elif defined(MATERIAL_METALLICROUGHNESS) && defined(HAS_BASE_COLOR_MAP)
-    baseColor *= texture(sampler2D(u_BaseColorData, u_BaseColorSampler), v_texcoord_0);
+    baseColor *= texture(sampler2D(u_BaseColorData, u_BaseColorSampler), getBaseColorUV());
 #endif
 
     return baseColor * getVertexColor();
