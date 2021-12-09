@@ -68,64 +68,32 @@ async function main() {
     let fragDefines = ["#version 310 es\n"];
 
     // create vertex attributes and layout
-    let gpuVertexBufferLayout = [];
+    let gpuVertexBufferLayout: any = [];
 
-    const posAccessor: Accessor | null = primitive.getAttribute("POSITION");
-    if (posAccessor !== null) {
-      vertDefines.push(" #define HAS_POSITION_VEC3 1\n");
-      fragDefines.push(" #define HAS_POSITION_VEC3 1\n");
-      var vertexData = posAccessor.getArray() as Float32Array;
-      var vertexBuffer = T3D.CreateGPUBuffer(device, vertexData);
-
-      gpuVertexBufferLayout.push({
-        arrayStride: 12,
-        attributes: [
-          {
-            shaderLocation: 0,
-            format: "float32x3",
-            offset: 0,
-          },
-        ],
-      });
+    function createBuffer(name: string, shaderLoc: number) {
+      const accessor: Accessor | null = primitive.getAttribute(name);
+      if (accessor !== null) {
+        vertDefines.push(`#define HAS_${name}_${accessor.getType()} 1\n`);
+        fragDefines.push(`#define HAS_${name}_${accessor.getType()} 1\n`);
+        const data = accessor.getArray() as Float32Array;
+        gpuVertexBufferLayout.push({
+          arrayStride: accessor.getComponentSize() * accessor.getElementSize(),
+          attributes: [
+            {
+              shaderLocation: shaderLoc,
+              format: `float32x${accessor.getElementSize()}`,
+              offset: 0,
+            },
+          ],
+        });
+        return T3D.CreateGPUBuffer(device, data);
+      }
+      return null;
     }
 
-    const norAccessor: Accessor | null = primitive.getAttribute("NORMAL");
-    if (norAccessor !== null) {
-      vertDefines.push(" #define HAS_NORMAL_VEC3 1\n");
-      fragDefines.push(" #define HAS_NORMAL_VEC3 1\n");
-      var normalData = norAccessor.getArray() as Float32Array;
-      var normalBuffer = T3D.CreateGPUBuffer(device, normalData);
-
-      gpuVertexBufferLayout.push({
-        arrayStride: 12,
-        attributes: [
-          {
-            shaderLocation: 1,
-            format: "float32x3",
-            offset: 0,
-          },
-        ],
-      });
-    }
-
-    const tex0Accessor: Accessor | null = primitive.getAttribute("TEXCOORD_0");
-    if (tex0Accessor !== null) {
-      vertDefines.push("#define HAS_TEXCOORD_0_VEC2 1\n");
-      fragDefines.push("#define HAS_TEXCOORD_0_VEC2 1\n");
-      var uv0Data = tex0Accessor.getArray() as Float32Array;
-      var uv0Buffer = T3D.CreateGPUBuffer(device, uv0Data);
-
-      gpuVertexBufferLayout.push({
-        arrayStride: 8,
-        attributes: [
-          {
-            shaderLocation: 2,
-            format: "float32x2",
-            offset: 0,
-          },
-        ],
-      });
-    }
+    const vertexBuffer = createBuffer("POSITION", 0);
+    const normalBuffer = createBuffer("NORMAL", 1);
+    const uv0Buffer = createBuffer("TEXCOORD_0", 2);
 
     // create index buffer
     const indexData = primitive.getIndices()?.getArray() as Uint16Array;
@@ -150,9 +118,7 @@ async function main() {
 
     let rotation = vec3.fromValues(0, 0, 0);
     let camera = createCamera(gpu.canvas, vp.cameraOption);
-
     let eyePosition = new Float32Array(T3D.CameraPosition);
-    // let lightPosition = eyePosition;
 
     // create uniform buffer and layout
     const vertexUniformsBufferSize = 4 * 4 * 4 * 3; // 3 mat4 matrices
@@ -161,45 +127,44 @@ async function main() {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
-    // create uniform float buffer
-    const fragUniformsFloatsSize = 15 * 4; // 15 floats
-    const fragmentUniformFloatsBuffer = device.createBuffer({
-      size: fragUniformsFloatsSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    const uniformFloats = new Float32Array([
-      1.0, // default u_Exposure
-      primitiveMaterial?.getMetallicFactor() as number, // u_MetallicFactor
-      1.0, // default u_RoughnessFactor
-      // TODO: add reasonable default values
-      1.0, // u_GlossinessFactor
-      1.0, // u_SheenRoughnessFactor
-      1.0, // u_ClearcoatFactor
-      1.0, // u_ClearcoatRoughnessFactor
-      1.0, // u_KHR_materials_specular_specularFactor
-      1.0, // u_TransmissionFactor
-      1.0, // u_ThicknessFactor
-      1.0, // u_AttenuationDistance
-      1.0, // u_Ior
-      1.0, // u_AlphaCutoff
-      primitiveMaterial.getNormalScale(), // u_NormalScale
-      1.0, // u_OcclusionStrength
-    ]);
-    device.queue.writeBuffer(fragmentUniformFloatsBuffer, 0, uniformFloats);
+    const fragmentUniformFloatsBuffer = T3D.CreateGPUBuffer(
+      device,
+      new Float32Array([
+        1.0, // default u_Exposure
+        primitiveMaterial?.getMetallicFactor() as number, // u_MetallicFactor
+        1.0, // default u_RoughnessFactor
+        // TODO: add reasonable default values
+        1.0, // u_GlossinessFactor
+        1.0, // u_SheenRoughnessFactor
+        1.0, // u_ClearcoatFactor
+        1.0, // u_ClearcoatRoughnessFactor
+        1.0, // u_KHR_materials_specular_specularFactor
+        1.0, // u_TransmissionFactor
+        1.0, // u_ThicknessFactor
+        1.0, // u_AttenuationDistance
+        1.0, // u_Ior
+        1.0, // u_AlphaCutoff
+        1.0, // u_OcclusionStrength
+      ]),
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
-    // create fragment int buffer
-    const fragUniformsIntsSize = 3 * 4; // 3 ints
-    const fragmentUniformIntsBuffer = device.createBuffer({
-      size: fragUniformsIntsSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    const uniformInts = new Int32Array([
-      // choose the first set of UV coords
-      0, // default u_NormalUVSet
-      0, // default u_EmissiveUVSet
-      0, // default u_OcclusionUVSet
-    ]);
-    device.queue.writeBuffer(fragmentUniformIntsBuffer, 0, uniformInts);
+    const fragmentNormalScaleBuffer = T3D.CreateGPUBuffer(
+      device,
+      new Float32Array([1.0]),
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
+
+    const fragmentUniformIntsBuffer = T3D.CreateGPUBuffer(
+      device,
+      new Int32Array([
+        // choose the first set of UV coords
+        0, // default u_NormalUVSet
+        0, // default u_EmissiveUVSet
+        0, // default u_OcclusionUVSet
+      ]),
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
     // create fragment vec4 buffer
     const fragUniformsVec4sSize = 2 * 4 * 4; // 2 vec4s
@@ -317,16 +282,12 @@ async function main() {
         binding: 1,
         resource: {
           buffer: fragmentUniformFloatsBuffer,
-          offset: 0,
-          size: fragUniformsFloatsSize,
         },
       },
       {
         binding: 2,
         resource: {
           buffer: fragmentUniformIntsBuffer,
-          offset: 0,
-          size: fragUniformsIntsSize,
         },
       },
       {
@@ -413,11 +374,23 @@ async function main() {
         // @ts-ignore
         resource: ts.texture.createView(),
       });
+      bindGroupLayout.push({
+        binding: 16,
+        // @ts-ignore
+        resource: {
+          buffer: fragmentNormalScaleBuffer,
+        },
+      });
       // update which tex coord (0 or 1) does this map use
       device.queue.writeBuffer(
         fragmentUniformIntsBuffer,
-        0, // first integer in the uniform block
+        0,
         new Int32Array([normalTextureInfo.getTexCoord()])
+      );
+      device.queue.writeBuffer(
+        fragmentNormalScaleBuffer,
+        0,
+        new Float32Array([primitiveMaterial.getNormalScale()])
       );
     }
 
@@ -567,9 +540,13 @@ async function main() {
       );
 
       renderPass.setPipeline(pipeline);
-      renderPass.setVertexBuffer(0, vertexBuffer);
-      renderPass.setVertexBuffer(1, normalBuffer);
-      if (tex0Accessor !== null) {
+      if (vertexBuffer !== null) {
+        renderPass.setVertexBuffer(0, vertexBuffer);
+      }
+      if (normalBuffer !== null) {
+        renderPass.setVertexBuffer(1, normalBuffer);
+      }
+      if (uv0Buffer !== null) {
         renderPass.setVertexBuffer(2, uv0Buffer);
       }
       renderPass.setIndexBuffer(indexBuffer, "uint16");

@@ -78,7 +78,7 @@ layout(set=0, binding=1) uniform FragmentFloats {
     float u_AttenuationDistance;
     float u_Ior;
     float u_AlphaCutoff;
-    float u_NormalScale;
+
     float u_OcclusionStrength;
 };
 
@@ -162,6 +162,10 @@ layout(set=0, binding=10) uniform LightUniforms {
 
 layout(set=0, binding=11) uniform sampler u_NormalSampler;
 layout(set=0, binding=12) uniform texture2D u_NormalData;
+layout(set=0, binding=16) uniform NormalScale {
+    float u_NormalScale;
+};
+   
 
 // general materials
 
