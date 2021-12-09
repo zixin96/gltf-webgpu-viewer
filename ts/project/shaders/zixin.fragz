@@ -124,12 +124,13 @@ layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 // MRs
 layout(set=0, binding=9) uniform MRUniforms {
     int u_BaseColorUVSet; 
-    // int u_MetallicRoughnessUVSet; 
+    int u_MetallicRoughnessUVSet; 
     // mat3 u_MetallicRoughnessUVTransform;
     // mat3 u_BaseColorUVTransform;
 };
 
-// uniform sampler2D u_MetallicRoughnessSampler;
+layout(set=0, binding=13) uniform sampler u_MetallicRoughnessSampler;
+layout(set=0, binding=14) uniform texture2D u_MetallicRoughnessData; 
 
 #endif
 
@@ -331,16 +332,16 @@ vec2 getBaseColorUV()
     return uv.xy;
 }
 
-// vec2 getMetallicRoughnessUV()
-// {
-//     vec3 uv = vec3(u_MetallicRoughnessUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
+vec2 getMetallicRoughnessUV()
+{
+    vec3 uv = vec3(u_MetallicRoughnessUVSet < 1 ? v_texcoord_0 : v_texcoord_1, 1.0);
 
-// #ifdef HAS_METALLICROUGHNESS_UV_TRANSFORM
-//     uv = u_MetallicRoughnessUVTransform * uv;
-// #endif
+#ifdef HAS_METALLICROUGHNESS_UV_TRANSFORM
+    uv = u_MetallicRoughnessUVTransform * uv;
+#endif
 
-//     return uv.xy;
-// }
+    return uv.xy;
+}
 
 #endif
 
@@ -1080,7 +1081,7 @@ MaterialInfo getMetallicRoughnessInfo(MaterialInfo info)
 #ifdef HAS_METALLIC_ROUGHNESS_MAP
     // Roughness is stored in the 'g' channel, metallic is stored in the 'b' channel.
     // This layout intentionally reserves the 'r' channel for (optional) occlusion map data
-    vec4 mrSample = texture(u_MetallicRoughnessSampler, getMetallicRoughnessUV());
+    vec4 mrSample =  texture(sampler2D(u_MetallicRoughnessData, u_MetallicRoughnessSampler), getMetallicRoughnessUV());
     info.perceptualRoughness *= mrSample.g;
     info.metallic *= mrSample.b;
 #endif

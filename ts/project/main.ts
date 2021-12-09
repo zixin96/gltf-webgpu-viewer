@@ -231,13 +231,14 @@ async function main() {
     device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
 
     // create fragment MRUniforms
-    const fragUniformsMRsSize = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
+    const fragUniformsMRsSize = 2 * 4; // TODO: since we ignore mat3 in this block, this is temporary
     const fragmentUniformMRBuffer = device.createBuffer({
       size: fragUniformsMRsSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     const uniformMRs = new Int32Array([
-      0, // u_BaseColorUVSet: textureInfo.getTexCoord()
+      0, // u_BaseColorUVSet
+      0, // u_MetallicRoughnessUVSet
     ]);
     device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
 
@@ -397,6 +398,34 @@ async function main() {
         fragmentUniformIntsBuffer,
         0, // first integer in the uniform block
         new Int32Array([normalTextureInfo.getTexCoord()])
+      );
+    }
+
+    const metallicRoughnessTexture =
+      primitiveMaterial.getMetallicRoughnessTexture();
+    if (metallicRoughnessTexture !== null) {
+      fragDefines.push("#define HAS_METALLIC_ROUGHNESS_MAP 1\n");
+      const metallicRoughnessTextureInfo =
+        primitiveMaterial.getMetallicRoughnessTextureInfo();
+      const ts = await Textures.CreateTexture(
+        device,
+        metallicRoughnessTexture!,
+        metallicRoughnessTextureInfo!
+      );
+      bindGroupLayout.push({
+        binding: 13,
+        // @ts-ignore
+        resource: ts.sampler,
+      });
+      bindGroupLayout.push({
+        binding: 14,
+        // @ts-ignore
+        resource: ts.texture.createView(),
+      });
+      device.queue.writeBuffer(
+        fragmentUniformMRBuffer,
+        4,
+        new Int32Array([metallicRoughnessTextureInfo.getTexCoord()])
       );
     }
 
