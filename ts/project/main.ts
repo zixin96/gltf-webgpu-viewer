@@ -280,14 +280,14 @@ async function main() {
         size: fragUniformsVec3sSize,
       },
     },
-    {
-      binding: 9,
-      resource: {
-        buffer: fragmentUniformMRBuffer,
-        offset: 0,
-        size: fragUniformsMRsSize,
-      },
-    },
+    // {
+    //   binding: 9,
+    //   resource: {
+    //     buffer: fragmentUniformMRBuffer,
+    //     offset: 0,
+    //     size: fragUniformsMRsSize,
+    //   },
+    // },
     {
       binding: 10,
       resource: {
