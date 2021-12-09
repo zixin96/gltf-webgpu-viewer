@@ -120,14 +120,19 @@ layout(set=0, binding=4) uniform FragmentVec3s {
 layout(set=0, binding=7) uniform sampler u_BaseColorSampler;
 layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 
+
 #ifdef MATERIAL_METALLICROUGHNESS
 // MRs
-layout(set=0, binding=9) uniform MRUniforms {
+layout(set=0, binding=9) uniform baseColorUV {
     int u_BaseColorUVSet; 
-    int u_MetallicRoughnessUVSet; 
-    // mat3 u_MetallicRoughnessUVTransform;
     // mat3 u_BaseColorUVTransform;
 };
+
+layout(set=0, binding=15) uniform metallicUV {
+    int u_MetallicRoughnessUVSet; 
+    // mat3 u_MetallicRoughnessUVTransform;
+}; 
+
 
 layout(set=0, binding=13) uniform sampler u_MetallicRoughnessSampler;
 layout(set=0, binding=14) uniform texture2D u_MetallicRoughnessData; 

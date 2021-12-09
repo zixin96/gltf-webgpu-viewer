@@ -11,11 +11,6 @@ import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
-const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
-const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
-
-let pbrShader = pbrShaderRaw.default;
-let vertShader = vertShaderRaw.default;
 
 async function main() {
   const gpu = await T3D.InitWebGPU();
@@ -26,7 +21,14 @@ async function main() {
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
-  drawDoc(doc);
+
+  const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
+  const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
+
+  let pbrShader = pbrShaderRaw.default;
+  let vertShader = vertShaderRaw.default;
+
+  drawDoc(doc, vertShader, pbrShader);
 
   const modelList = <HTMLInputElement>document.getElementById("gltf-model");
   modelList.addEventListener("change", async function () {
@@ -34,10 +36,17 @@ async function main() {
     const doc = await io.read(
       `https://agile-hamlet-83897.herokuapp.com/${uri}`
     );
-    drawDoc(doc);
+    // reset the shaders before drawing new models
+    const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
+    const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
+
+    let pbrShader = pbrShaderRaw.default;
+    let vertShader = vertShaderRaw.default;
+
+    drawDoc(doc, vertShader, pbrShader);
   });
 
-  async function drawDoc(doc: any) {
+  async function drawDoc(doc: any, vert: any, frag: any) {
     // Get data from gltf
     const gltfRoot = doc.getRoot();
 
@@ -231,16 +240,25 @@ async function main() {
     device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
 
     // create fragment MRUniforms
-    const fragUniformsMRsSize = 2 * 4; // TODO: since we ignore mat3 in this block, this is temporary
+    const fragUniformsMRsSize = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
     const fragmentUniformMRBuffer = device.createBuffer({
       size: fragUniformsMRsSize,
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
     const uniformMRs = new Int32Array([
       0, // u_BaseColorUVSet
-      0, // u_MetallicRoughnessUVSet
     ]);
     device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
+
+    const fragUniformsMR2Size = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
+    const fragmentUniformMR2Buffer = device.createBuffer({
+      size: fragUniformsMR2Size,
+      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+    });
+    const uniformMR2s = new Int32Array([
+      0, // u_MetallicRoughnessUVSet
+    ]);
+    device.queue.writeBuffer(fragmentUniformMR2Buffer, 0, uniformMR2s);
 
     // create fragment light buffer
     const defaultLights = [
@@ -328,14 +346,6 @@ async function main() {
         },
       },
       {
-        binding: 9,
-        resource: {
-          buffer: fragmentUniformMRBuffer,
-          offset: 0,
-          size: fragUniformsMRsSize,
-        },
-      },
-      {
         binding: 10,
         resource: {
           buffer: fragmentUniformLightsBuffer,
@@ -366,6 +376,16 @@ async function main() {
         // @ts-ignore
         resource: ts.texture.createView(),
       });
+
+      bindGroupLayout.push({
+        binding: 9,
+        resource: {
+          buffer: fragmentUniformMRBuffer,
+          offset: 0,
+          size: fragUniformsMRsSize,
+        },
+      });
+
       // update which tex coord (0 or 1) does this map use
       device.queue.writeBuffer(
         fragmentUniformMRBuffer,
@@ -422,9 +442,19 @@ async function main() {
         // @ts-ignore
         resource: ts.texture.createView(),
       });
+
+      bindGroupLayout.push({
+        binding: 15,
+        resource: {
+          buffer: fragmentUniformMR2Buffer,
+          offset: 0,
+          size: fragUniformsMR2Size,
+        },
+      });
+
       device.queue.writeBuffer(
         fragmentUniformMRBuffer,
-        4,
+        0,
         new Int32Array([metallicRoughnessTextureInfo.getTexCoord()])
       );
     }
@@ -442,7 +472,7 @@ async function main() {
     const pipeline = device.createRenderPipeline({
       vertex: {
         module: device.createShaderModule({
-          code: glslang.compileGLSL(vDefines + vertShader, "vertex"),
+          code: glslang.compileGLSL(vDefines + vert, "vertex"),
         }),
         entryPoint: "main",
         // @ts-ignore
@@ -450,7 +480,7 @@ async function main() {
       },
       fragment: {
         module: device.createShaderModule({
-          code: glslang.compileGLSL(fDefines + pbrShader, "fragment"),
+          code: glslang.compileGLSL(fDefines + frag, "fragment"),
         }),
         entryPoint: "main",
         targets: [
