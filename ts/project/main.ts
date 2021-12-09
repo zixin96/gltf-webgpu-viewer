@@ -127,6 +127,7 @@ async function main() {
       usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
     });
 
+    // create fragment uniform float buffer
     const fragmentUniformFloatsBuffer = T3D.CreateGPUBuffer(
       device,
       new Float32Array([
@@ -149,12 +150,14 @@ async function main() {
       GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     );
 
+    // create fragment uniform normal scale
     const fragmentNormalScaleBuffer = T3D.CreateGPUBuffer(
       device,
-      new Float32Array([1.0]),
+      new Float32Array([1.0]), // u_NormalScale
       GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
     );
 
+    // create fragment uniform ints
     const fragmentUniformIntsBuffer = T3D.CreateGPUBuffer(
       device,
       new Int32Array([
@@ -167,63 +170,60 @@ async function main() {
     );
 
     // create fragment vec4 buffer
-    const fragUniformsVec4sSize = 2 * 4 * 4; // 2 vec4s
-    const fragmentUniformVec4sBuffer = device.createBuffer({
-      size: fragUniformsVec4sSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
     const baseColorFactor = new Float32Array(
       primitiveMaterial?.getBaseColorFactor() as vec4
     );
     const diffuseFactor = vec4.fromValues(1.0, 1.0, 1.0, 1.0);
     const uniformVec4s = new Float32Array([
-      ...baseColorFactor,
-      ...diffuseFactor,
+      ...baseColorFactor, // u_BaseColorFactor
+      ...diffuseFactor, // u_DiffuseFactor
     ]);
-    device.queue.writeBuffer(fragmentUniformVec4sBuffer, 0, uniformVec4s);
+    const fragmentUniformVec4sBuffer = T3D.CreateGPUBuffer(
+      device,
+      uniformVec4s,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
     // create fragment vec3 buffer
-    const fragUniformsVec3sSize = 6 * 4 * 4; // 6 vec3s (treated as vec4)
-    const fragmentUniformVec3sBuffer = device.createBuffer({
-      size: fragUniformsVec3sSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
     const emissiveFactor = new Float32Array(
       primitiveMaterial?.getEmissiveFactor() as vec3
     );
     const defaultSpecularSheenKHRAttenu = [1.0, 1.0, 1.0, 0.0];
     const uniformVec3s = new Float32Array([
-      ...emissiveFactor,
+      ...emissiveFactor, // u_EmissiveFactor
       0.0, // paddings
-      ...eyePosition, // TODO: this is updated by frame, write newest eye position into the fragment shader
+      ...eyePosition, // u_Camera
       0.0, // paddings
-      ...defaultSpecularSheenKHRAttenu,
-      ...defaultSpecularSheenKHRAttenu,
-      ...defaultSpecularSheenKHRAttenu,
-      ...defaultSpecularSheenKHRAttenu,
+      ...defaultSpecularSheenKHRAttenu, // u_SpecularFactor
+      ...defaultSpecularSheenKHRAttenu, // u_SheenColorFactor
+      ...defaultSpecularSheenKHRAttenu, // u_KHR_materials_specular_specularColorFactor
+      ...defaultSpecularSheenKHRAttenu, // u_AttenuationColor
     ]);
-    device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
+    const fragmentUniformVec3sBuffer = T3D.CreateGPUBuffer(
+      device,
+      uniformVec3s,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
     // create fragment MRUniforms
-    const fragUniformsMRsSize = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
-    const fragmentUniformMRBuffer = device.createBuffer({
-      size: fragUniformsMRsSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
     const uniformMRs = new Int32Array([
       0, // u_BaseColorUVSet
     ]);
-    device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
+    const fragmentUniformMRBuffer = T3D.CreateGPUBuffer(
+      device,
+      uniformMRs,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
-    const fragUniformsMR2Size = 1 * 4; // TODO: since we ignore mat3 in this block, this is temporary
-    const fragmentUniformMR2Buffer = device.createBuffer({
-      size: fragUniformsMR2Size,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
+    // create fragment MRUniforms2
     const uniformMR2s = new Int32Array([
       0, // u_MetallicRoughnessUVSet
     ]);
-    device.queue.writeBuffer(fragmentUniformMR2Buffer, 0, uniformMR2s);
+    const fragmentUniformMR2Buffer = T3D.CreateGPUBuffer(
+      device,
+      uniformMR2s,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
     // create fragment light buffer
     const defaultLights = [
@@ -262,12 +262,11 @@ async function main() {
       lightArray.push(0); // paddings
     }
     let lightUniformData = Float32Array.from(lightArray);
-    const fragUniformsLightsSize = (lightUniformData.byteLength + 3) & ~3;
-    const fragmentUniformLightsBuffer = device.createBuffer({
-      size: fragUniformsLightsSize,
-      usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-    });
-    device.queue.writeBuffer(fragmentUniformLightsBuffer, 0, lightUniformData);
+    const fragmentUniformLightsBuffer = T3D.CreateGPUBuffer(
+      device,
+      lightUniformData,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    );
 
     const bindGroupLayout: GPUBindGroupEntry[] = [
       {
@@ -294,24 +293,18 @@ async function main() {
         binding: 3,
         resource: {
           buffer: fragmentUniformVec4sBuffer,
-          offset: 0,
-          size: fragUniformsVec4sSize,
         },
       },
       {
         binding: 4,
         resource: {
           buffer: fragmentUniformVec3sBuffer,
-          offset: 0,
-          size: fragUniformsVec3sSize,
         },
       },
       {
         binding: 10,
         resource: {
           buffer: fragmentUniformLightsBuffer,
-          offset: 0,
-          size: fragUniformsLightsSize,
         },
       },
     ];
@@ -342,8 +335,6 @@ async function main() {
         binding: 9,
         resource: {
           buffer: fragmentUniformMRBuffer,
-          offset: 0,
-          size: fragUniformsMRsSize,
         },
       });
 
@@ -420,8 +411,6 @@ async function main() {
         binding: 15,
         resource: {
           buffer: fragmentUniformMR2Buffer,
-          offset: 0,
-          size: fragUniformsMR2Size,
         },
       });
 
