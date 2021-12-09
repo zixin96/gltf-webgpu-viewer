@@ -58,6 +58,35 @@ async function main() {
     // Get data from gltf
     const gltfRoot = doc.getRoot();
 
+    // FIXME: BUGGY animation
+    if (gltfRoot.listAnimations().length !== 0) {
+      alert("animation is not supported !");
+
+      // const animation = gltfRoot.listAnimations()[0];
+      // const animationChannel = animation.listChannels()[0];
+      // const sampler = animationChannel.getSampler();
+
+      // const aniInputAccessor = sampler.getInput();
+      // const timeArray = aniInputAccessor.getArray();
+
+      // const aniOutputAccessor = sampler.getOutput();
+      // const valueArray = aniOutputAccessor.getArray();
+      // console.log(valueArray);
+      // console.log(timeArray);
+      // const timeValueMap = new Map();
+      // let j = 0;
+      // for (let i = 0; i < timeArray.length; i++) {
+      //   timeValueMap.set(timeArray[i], [
+      //     valueArray[j],
+      //     valueArray[j + 1],
+      //     valueArray[j + 2],
+      //     valueArray[j + 3],
+      //   ]);
+      //   j += 4;
+      // }
+      // const maxTime = aniInputAccessor.getMax([]);
+    }
+
     // get the single mesh
     const nodesWithMesh = gltfRoot
       .listNodes()
@@ -146,7 +175,7 @@ async function main() {
     );
     vpMatrix = vp.viewProjectionMatrix;
 
-    let rotation = vec3.fromValues(0, 0, 0);
+    let rotation = vec4.fromValues(0, 0, 0, 0);
     let camera = createCamera(gpu.canvas, vp.cameraOption);
     let eyePosition = new Float32Array(T3D.CameraPosition);
 
@@ -541,6 +570,7 @@ async function main() {
         // device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
       }
 
+      T3D.CreateTransforms(modelMatrix, [0, 0, 0], rotation as vec4, [1, 1, 1]);
       mat4.invert(normalMatrix, modelMatrix);
       mat4.transpose(normalMatrix, normalMatrix);
       device.queue.writeBuffer(
@@ -575,7 +605,7 @@ async function main() {
       renderPass.endPass();
       device.queue.submit([commandEncoder.finish()]);
     }
-    T3D.CreateAnimation(draw, rotation);
+    T3D.CreateAnimation(draw, rotation, false);
   }
 }
 
