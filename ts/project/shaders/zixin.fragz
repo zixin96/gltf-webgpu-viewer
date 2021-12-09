@@ -107,6 +107,8 @@ layout(set=0, binding=4) uniform FragmentVec3s {
     vec3 u_AttenuationColor;
 };
 
+
+
 // layout(set=0, binding=5)  uniform FragmentMat4s {
 //     mat4 u_ModelMatrix;
 //     mat4 u_ViewMatrix;
@@ -119,25 +121,28 @@ layout(set=0, binding=4) uniform FragmentVec3s {
 //     mat3 u_OcclusionUVTransform;
 // };
 
-// general materials
-// uniform sampler2D u_NormalSampler;
-// uniform sampler2D u_EmissiveSampler;
-// uniform sampler2D u_OcclusionSampler;
-
-#ifdef MATERIAL_METALLICROUGHNESS
-// MRs
-// layout(set=0, binding=2) uniform MRUniforms {
-//             int u_MetallicRoughnessUVSet;
-//  mat3 u_MetallicRoughnessUVTransform;
-//  int u_BaseColorUVSet;
-//  mat3 u_BaseColorUVTransform;
-// };
-// uniform sampler2D u_MetallicRoughnessSampler;
 
 layout(set=0, binding=7) uniform sampler u_BaseColorSampler;
 layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 
+#ifdef MATERIAL_METALLICROUGHNESS
+// MRs
+layout(set=0, binding=9) uniform MRUniforms {
+    int u_MetallicRoughnessUVSet; // set to 0
+    int u_BaseColorUVSet; // set to 0 here
+    // mat3 u_MetallicRoughnessUVTransform;
+    // mat3 u_BaseColorUVTransform;
+};
+
+// uniform sampler2D u_MetallicRoughnessSampler;
+
 #endif
+
+
+// general materials
+// uniform sampler2D u_NormalSampler;
+// uniform sampler2D u_EmissiveSampler;
+// uniform sampler2D u_OcclusionSampler;
 
 // struct Light
 // {
@@ -167,7 +172,8 @@ void main()
     int temp2 = u_OcclusionUVSet;
     vec4 temp3 = u_BaseColorFactor;
     vec3 temp4 = u_AttenuationColor;
-    g_finalColor = vec4(u_Camera, 0.0);
+    vec3 temp5 = u_Camera;
+    g_finalColor = vec4(u_BaseColorUVSet, 0.0, 0.0, 0.0);
 }
 
 

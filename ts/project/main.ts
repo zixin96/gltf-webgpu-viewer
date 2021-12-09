@@ -171,7 +171,6 @@ async function main() {
   const emissiveFactor = new Float32Array(
     primitiveMaterial?.getEmissiveFactor() as vec3
   );
-  console.log(emissiveFactor);
   const defaultSpecularSheenKHRAttenu = [1.0, 1.0, 1.0, 0.0];
   const uniformVec3s = new Float32Array([
     ...emissiveFactor,
@@ -184,6 +183,18 @@ async function main() {
     ...defaultSpecularSheenKHRAttenu,
   ]);
   device.queue.writeBuffer(fragmentUniformVec3sBuffer, 0, uniformVec3s);
+
+  // create fragment MRUniforms
+  const fragUniformsMRsSize = 2 * 4; // TODO: since we ignore mat3 in this block, this is temporary
+  const fragmentUniformMRBuffer = device.createBuffer({
+    size: fragUniformsMRsSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  const uniformMRs = new Int32Array([
+    0, // u_MetallicRoughnessUVSet
+    0, // u_BaseColorUVSet
+  ]);
+  device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
 
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
@@ -224,6 +235,14 @@ async function main() {
         buffer: fragmentUniformVec3sBuffer,
         offset: 0,
         size: fragUniformsVec3sSize,
+      },
+    },
+    {
+      binding: 9,
+      resource: {
+        buffer: fragmentUniformMRBuffer,
+        offset: 0,
+        size: fragUniformsMRsSize,
       },
     },
   ];
