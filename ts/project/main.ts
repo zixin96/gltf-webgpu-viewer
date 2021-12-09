@@ -25,7 +25,7 @@ async function main() {
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
   const io = new WebIO();
-  const modelName = "Box%20With%20Spaces";
+  const modelName = "Box";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -112,7 +112,7 @@ async function main() {
     const vertexBuffer = createVertexBuffer("POSITION", 0);
     const normalBuffer = createVertexBuffer("NORMAL", 1);
     const uv0Buffer = createVertexBuffer("TEXCOORD_0", 2);
-    // const color0Buffer = createVertexBuffer("COLOR_0", 3);
+    const color0Buffer = createVertexBuffer("COLOR_0", 3);
 
     // create index buffer
     const indexAccessor: Accessor = primitive.getIndices();
@@ -565,6 +565,9 @@ async function main() {
       }
       if (uv0Buffer !== null) {
         renderPass.setVertexBuffer(2, uv0Buffer);
+      }
+      if (color0Buffer !== null) {
+        renderPass.setVertexBuffer(3, color0Buffer);
       }
       renderPass.setIndexBuffer(indexBuffer, indexDataType);
 
