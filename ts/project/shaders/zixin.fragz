@@ -128,8 +128,8 @@ layout(set=0, binding=8) uniform texture2D u_BaseColorData;
 #ifdef MATERIAL_METALLICROUGHNESS
 // MRs
 layout(set=0, binding=9) uniform MRUniforms {
-    int u_MetallicRoughnessUVSet; // set to 0
-    int u_BaseColorUVSet; // set to 0 here
+    int u_MetallicRoughnessUVSet; // check
+    int u_BaseColorUVSet; // check
     // mat3 u_MetallicRoughnessUVTransform;
     // mat3 u_BaseColorUVTransform;
 };
@@ -138,32 +138,32 @@ layout(set=0, binding=9) uniform MRUniforms {
 
 #endif
 
+struct Light
+{
+    vec3 direction;
+    float range;
+
+    vec3 color;
+    float intensity;
+
+    vec3 position;
+    float innerConeCos;
+
+    float outerConeCos;
+    int type;
+};
+
+#ifdef USE_PUNCTUAL
+layout(set=0, binding=10) uniform LightUniforms {
+    Light u_Lights[LIGHT_COUNT];
+};
+#endif
+
 
 // general materials
 // uniform sampler2D u_NormalSampler;
 // uniform sampler2D u_EmissiveSampler;
 // uniform sampler2D u_OcclusionSampler;
-
-// struct Light
-// {
-//     vec3 direction;
-//     float range;
-
-//     vec3 color;
-//     float intensity;
-
-//     vec3 position;
-//     float innerConeCos;
-
-//     float outerConeCos;
-//     int type;
-// };
-
-// #ifdef USE_PUNCTUAL
-// layout(set=0, binding=9) uniform LightUniforms {
-//     Light u_Light;
-// };
-// #endif
 
 void main()
 {
@@ -173,7 +173,10 @@ void main()
     vec4 temp3 = u_BaseColorFactor;
     vec3 temp4 = u_AttenuationColor;
     vec3 temp5 = u_Camera;
-    g_finalColor = vec4(u_BaseColorUVSet, 0.0, 0.0, 0.0);
+    int temp6 = u_BaseColorUVSet;
+    Light l1 = u_Lights[0];
+    Light l2 = u_Lights[1];
+    g_finalColor = vec4(l2.type, 0.0, 0.0, 1.0);
 }
 
 

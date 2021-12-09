@@ -4,7 +4,6 @@ import { Transforms as T3D } from "./transforms";
 import { SimpleTextureShader } from "./shaders";
 import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
-import { buffer } from "stream/consumers";
 
 const createCamera = require("3d-view-controls");
 
@@ -100,7 +99,7 @@ async function main() {
   let camera = createCamera(gpu.canvas, vp.cameraOption);
 
   let eyePosition = new Float32Array(T3D.CameraPosition);
-  let lightPosition = eyePosition;
+  // let lightPosition = eyePosition;
 
   // create uniform buffer and layout
   const vertexUniformsBufferSize = 4 * 4 * 4 * 3; // 3 mat4 matrices
@@ -196,6 +195,50 @@ async function main() {
   ]);
   device.queue.writeBuffer(fragmentUniformMRBuffer, 0, uniformMRs);
 
+  // create fragment light buffer
+  const defaultLights = [
+    {
+      direction: [0.5, -0.707, -0.49],
+      range: -1,
+      color: [1, 1, 1],
+      intensity: 1,
+      position: [0, 0, 0],
+      innerConeCos: 1,
+      outerConeCos: 0.707,
+      type: 0,
+    },
+    {
+      direction: [-0.5, 0.707, 0.5],
+      range: -1,
+      color: [1, 1, 1],
+      intensity: 0.5,
+      position: [0, 0, 0],
+      innerConeCos: 1,
+      outerConeCos: 0.707,
+      type: 0,
+    },
+  ];
+  let lightArray = new Array();
+  for (let light of defaultLights) {
+    lightArray.push(...light.direction);
+    lightArray.push(light.range);
+    lightArray.push(...light.color);
+    lightArray.push(light.intensity);
+    lightArray.push(...light.position);
+    lightArray.push(light.innerConeCos);
+    lightArray.push(light.outerConeCos);
+    lightArray.push(light.type);
+    lightArray.push(0); // paddings
+    lightArray.push(0); // paddings
+  }
+  let lightUniformData = Float32Array.from(lightArray);
+  const fragUniformsLightsSize = (lightUniformData.byteLength + 3) & ~3;
+  const fragmentUniformLightsBuffer = device.createBuffer({
+    size: fragUniformsLightsSize,
+    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+  });
+  device.queue.writeBuffer(fragmentUniformLightsBuffer, 0, lightUniformData);
+
   const bindGroupLayout: GPUBindGroupEntry[] = [
     {
       binding: 0,
@@ -243,6 +286,14 @@ async function main() {
         buffer: fragmentUniformMRBuffer,
         offset: 0,
         size: fragUniformsMRsSize,
+      },
+    },
+    {
+      binding: 10,
+      resource: {
+        buffer: fragmentUniformLightsBuffer,
+        offset: 0,
+        size: fragUniformsLightsSize,
       },
     },
   ];
@@ -355,7 +406,7 @@ async function main() {
       mat4.multiply(vpMatrix, pMatrix, vMatrix);
 
       eyePosition = new Float32Array(camera.eye.flat());
-      lightPosition = eyePosition;
+      // lightPosition = eyePosition;
       device.queue.writeBuffer(vertexUniformBuffer, 0, vpMatrix as ArrayBuffer);
       device.queue.writeBuffer(fragmentUniformVec3sBuffer, 16, eyePosition);
       // device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
