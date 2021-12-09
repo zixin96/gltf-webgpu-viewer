@@ -106,13 +106,19 @@ async function main() {
           componentTypeMap.get(accessor.getComponentType())
         );
       }
-      return null;
+      // create a dummy GPU Buffer if there isn't one
+      return T3D.CreateGPUBuffer(
+        device,
+        new Float32Array(),
+        GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+      );
     }
 
     const vertexBuffer = createVertexBuffer("POSITION", 0);
     const normalBuffer = createVertexBuffer("NORMAL", 1);
     const uv0Buffer = createVertexBuffer("TEXCOORD_0", 2);
     const color0Buffer = createVertexBuffer("COLOR_0", 3);
+    const tangentBuffer = createVertexBuffer("TANGENT", 4);
 
     // create index buffer
     const indexAccessor: Accessor = primitive.getIndices();
@@ -557,18 +563,11 @@ async function main() {
       );
 
       renderPass.setPipeline(pipeline);
-      if (vertexBuffer !== null) {
-        renderPass.setVertexBuffer(0, vertexBuffer);
-      }
-      if (normalBuffer !== null) {
-        renderPass.setVertexBuffer(1, normalBuffer);
-      }
-      if (uv0Buffer !== null) {
-        renderPass.setVertexBuffer(2, uv0Buffer);
-      }
-      if (color0Buffer !== null) {
-        renderPass.setVertexBuffer(3, color0Buffer);
-      }
+      renderPass.setVertexBuffer(0, vertexBuffer);
+      renderPass.setVertexBuffer(1, normalBuffer);
+      renderPass.setVertexBuffer(2, uv0Buffer);
+      renderPass.setVertexBuffer(3, color0Buffer);
+      renderPass.setVertexBuffer(4, tangentBuffer);
       renderPass.setIndexBuffer(indexBuffer, indexDataType);
 
       renderPass.setBindGroup(0, sceneUniformBindGroup);

@@ -229,8 +229,8 @@ layout(location=0) out vec3 v_Position;
 
 #ifdef HAS_NORMAL_VEC3
 #ifdef HAS_TANGENT_VEC4
-in vec4 a_tangent;
-out mat3 v_TBN;
+layout(location=4) in vec4 a_tangent; // in max is 4
+layout(location=5) out mat3 v_TBN; // out max is 5
 #else
 layout(location=1) out vec3 v_Normal;
 #endif
