@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@gltf-transform/core": "^1.2.3",
+    "@gltf-transform/extensions": "^1.2.4",
     "@types/jquery": "^3.5.9",
     "@types/node": "16.11.11",
     "@types/three": "^0.135.0",
