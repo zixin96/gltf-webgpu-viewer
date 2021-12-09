@@ -105,7 +105,7 @@ export class Transforms {
   }
 
   public static CreateTransforms(
-    modelMat: mat4,
+    inputMatrix: mat4,
     translation: vec3,
     rotation: vec4,
     scaling: vec3
@@ -117,6 +117,7 @@ export class Transforms {
     const translateMat = mat4.create();
     const scaleMat = mat4.create();
 
+    // ! no animation
     // if rotation, translation or scaling is falsy, default values will be set
     rotation = rotation || [0, 0, 0, 0];
     translation = translation || [0, 0, 0];
@@ -138,14 +139,16 @@ export class Transforms {
 
     //combine all transformation matrices together to form a final transform matrix: modelMat
     // T * R * S
-    mat4.multiply(modelMat, rotateMat, scaleMat);
-    mat4.multiply(modelMat, translateMat, modelMat);
+    mat4.multiply(inputMatrix, rotateMat, scaleMat);
+    mat4.multiply(inputMatrix, translateMat, inputMatrix);
   }
 
   public static CreateAnimation(
     draw: any,
     rotation: vec4,
     isAnimation = false
+    // maxTime: number = 0,
+    // timeValueMap: any
   ) {
     function step() {
       if (isAnimation) {

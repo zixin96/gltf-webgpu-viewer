@@ -25,7 +25,7 @@ async function main() {
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
   const io = new WebIO();
-  const modelName = "Box";
+  const modelName = "Duck";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -61,30 +61,29 @@ async function main() {
     // FIXME: BUGGY animation
     if (gltfRoot.listAnimations().length !== 0) {
       alert("animation is not supported !");
+      const animation = gltfRoot.listAnimations()[0];
+      const animationChannel = animation.listChannels()[0];
+      const sampler = animationChannel.getSampler();
 
-      // const animation = gltfRoot.listAnimations()[0];
-      // const animationChannel = animation.listChannels()[0];
-      // const sampler = animationChannel.getSampler();
+      const aniInputAccessor = sampler.getInput();
+      const timeArray = aniInputAccessor.getArray();
 
-      // const aniInputAccessor = sampler.getInput();
-      // const timeArray = aniInputAccessor.getArray();
-
-      // const aniOutputAccessor = sampler.getOutput();
-      // const valueArray = aniOutputAccessor.getArray();
-      // console.log(valueArray);
-      // console.log(timeArray);
-      // const timeValueMap = new Map();
-      // let j = 0;
-      // for (let i = 0; i < timeArray.length; i++) {
-      //   timeValueMap.set(timeArray[i], [
-      //     valueArray[j],
-      //     valueArray[j + 1],
-      //     valueArray[j + 2],
-      //     valueArray[j + 3],
-      //   ]);
-      //   j += 4;
-      // }
-      // const maxTime = aniInputAccessor.getMax([]);
+      const aniOutputAccessor = sampler.getOutput();
+      const valueArray = aniOutputAccessor.getArray();
+      console.log(valueArray);
+      console.log(timeArray);
+      const timeValueMap = new Map();
+      let j = 0;
+      for (let i = 0; i < timeArray.length; i++) {
+        timeValueMap.set(timeArray[i], [
+          valueArray[j],
+          valueArray[j + 1],
+          valueArray[j + 2],
+          valueArray[j + 3],
+        ]);
+        j += 4;
+      }
+      const maxTime = aniInputAccessor.getMax([]);
     }
 
     // get the single mesh
@@ -569,8 +568,14 @@ async function main() {
         device.queue.writeBuffer(fragmentUniformVec3sBuffer, 16, eyePosition);
         // device.queue.writeBuffer(fragmentUniformBuffer, 16, lightPosition);
       }
-
-      T3D.CreateTransforms(modelMatrix, [0, 0, 0], rotation as vec4, [1, 1, 1]);
+      // const aniTransformMatrix = mat4.create();
+      // T3D.CreateTransforms(
+      //   aniTransformMatrix,
+      //   [0, 0, 0],
+      //   rotation as vec4,
+      //   [1, 1, 1]
+      // );
+      // mat4.multiply(modelMatrix, mat4.create(), aniTransformMatrix);
       mat4.invert(normalMatrix, modelMatrix);
       mat4.transpose(normalMatrix, normalMatrix);
       device.queue.writeBuffer(
@@ -605,7 +610,7 @@ async function main() {
       renderPass.endPass();
       device.queue.submit([commandEncoder.finish()]);
     }
-    T3D.CreateAnimation(draw, rotation, false);
+    T3D.CreateAnimation(draw, rotation, false /*, maxTime, timeValueMap */);
   }
 }
 

@@ -27,3 +27,9 @@ localhost/:1
 This error is because we didn't use uniform variables in the main() functions
 
 If the console says error is on 168, it is actually on 167
+
+TODO:
+
+Mutliple Camera Instance
+
+Animation
