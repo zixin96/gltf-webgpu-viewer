@@ -22,9 +22,9 @@ async function main() {
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
   const io = new WebIO();
-  const modelName = "BoxTextured";
+  const modelName = "Box%20With%20Spaces";
   let doc = await io.read(
-    `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF-Binary/${modelName}.glb`
+    `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
   drawDoc(doc);
 
@@ -46,6 +46,7 @@ async function main() {
       .listNodes()
       .filter((node: any) => (node.getMesh() !== null ? true : false));
 
+    // assume there is only one mesh
     const node = nodesWithMesh[0];
     const mesh = node.getMesh();
     const meshWorldMatrix = new Float32Array(node.getWorldMatrix());
@@ -172,7 +173,7 @@ async function main() {
       1.0, // u_AttenuationDistance
       1.0, // u_Ior
       1.0, // u_AlphaCutoff
-      1.0, // u_NormalScale
+      primitiveMaterial.getNormalScale(), // u_NormalScale
       1.0, // u_OcclusionStrength
     ]);
     device.queue.writeBuffer(fragmentUniformFloatsBuffer, 0, uniformFloats);
@@ -346,10 +347,10 @@ async function main() {
 
     // create base color texture if it has one
     // ! Every texture follow this pattern
-    const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
+    const baseColorTexture = primitiveMaterial.getBaseColorTexture();
     if (baseColorTexture !== null) {
       fragDefines.push("#define HAS_BASE_COLOR_MAP 1\n");
-      const baseColorTextureInfo = primitiveMaterial?.getBaseColorTextureInfo();
+      const baseColorTextureInfo = primitiveMaterial.getBaseColorTextureInfo();
       const ts = await Textures.CreateTexture(
         device,
         baseColorTexture!,
@@ -367,6 +368,27 @@ async function main() {
       });
     }
 
+    const normalTexture = primitiveMaterial.getNormalTexture();
+    if (normalTexture !== null) {
+      fragDefines.push("#define HAS_NORMAL_MAP 1\n");
+      const normalTextureInfo = primitiveMaterial.getNormalTextureInfo();
+      const ts = await Textures.CreateTexture(
+        device,
+        normalTexture!,
+        normalTextureInfo!
+      );
+      bindGroupLayout.push({
+        binding: 11,
+        // @ts-ignore
+        resource: ts.sampler,
+      });
+      bindGroupLayout.push({
+        binding: 12,
+        // @ts-ignore
+        resource: ts.texture.createView(),
+      });
+    }
+
     //create render pipeline
     const vDefines = vertDefines.reduce(
       (preDef, curDef) => preDef + curDef,
@@ -376,6 +398,7 @@ async function main() {
       (preDef, curDef) => preDef + curDef,
       ""
     );
+
     const pipeline = device.createRenderPipeline({
       vertex: {
         module: device.createShaderModule({
