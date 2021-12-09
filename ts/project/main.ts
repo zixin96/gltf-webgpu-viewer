@@ -12,6 +12,14 @@ import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
 
+const componentTypeMap = new Map();
+componentTypeMap.set(5120, "sint8");
+componentTypeMap.set(5121, "uint8");
+componentTypeMap.set(5122, "sint16");
+componentTypeMap.set(5123, "uint16");
+componentTypeMap.set(5125, "uint32");
+componentTypeMap.set(5126, "float32");
+
 async function main() {
   const gpu = await T3D.InitWebGPU();
   const device = gpu.device;
@@ -70,39 +78,55 @@ async function main() {
     // create vertex attributes and layout
     let gpuVertexBufferLayout: any = [];
 
-    function createBuffer(name: string, shaderLoc: number) {
+    function createVertexBuffer(name: string, shaderLoc: number) {
       const accessor: Accessor | null = primitive.getAttribute(name);
       if (accessor !== null) {
         vertDefines.push(`#define HAS_${name}_${accessor.getType()} 1\n`);
         fragDefines.push(`#define HAS_${name}_${accessor.getType()} 1\n`);
-        const data = accessor.getArray() as Float32Array;
+        const data = accessor.getArray();
+        const arrayStride =
+          accessor.getComponentSize() * accessor.getElementSize();
+        const attributeFormat = `${componentTypeMap.get(
+          accessor.getComponentType()
+        )}x${accessor.getElementSize()}`;
         gpuVertexBufferLayout.push({
-          arrayStride: accessor.getComponentSize() * accessor.getElementSize(),
+          arrayStride: arrayStride,
           attributes: [
             {
               shaderLocation: shaderLoc,
-              format: `float32x${accessor.getElementSize()}`,
+              format: attributeFormat,
               offset: 0,
             },
           ],
         });
-        return T3D.CreateGPUBuffer(device, data);
+        return T3D.CreateGPUBuffer(
+          device,
+          data,
+          GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+          componentTypeMap.get(accessor.getComponentType())
+        );
       }
       return null;
     }
 
-    const vertexBuffer = createBuffer("POSITION", 0);
-    const normalBuffer = createBuffer("NORMAL", 1);
-    const uv0Buffer = createBuffer("TEXCOORD_0", 2);
+    const vertexBuffer = createVertexBuffer("POSITION", 0);
+    const normalBuffer = createVertexBuffer("NORMAL", 1);
+    const uv0Buffer = createVertexBuffer("TEXCOORD_0", 2);
+    // const color0Buffer = createVertexBuffer("COLOR_0", 3);
 
     // create index buffer
-    const indexData = primitive.getIndices()?.getArray() as Uint16Array;
+    const indexAccessor: Accessor = primitive.getIndices();
+    const indexData = indexAccessor.getArray();
+    const indexCount = indexAccessor.getCount();
+    const indexDataType = componentTypeMap.get(
+      indexAccessor.getComponentType()
+    );
     const indexBuffer = T3D.CreateGPUBuffer(
       device,
       indexData,
-      GPUBufferUsage.INDEX
+      GPUBufferUsage.INDEX,
+      indexDataType
     );
-
     ////////////////////////////////////
     // uniforms
     ////////////////////////////////////
@@ -166,7 +190,8 @@ async function main() {
         0, // default u_EmissiveUVSet
         0, // default u_OcclusionUVSet
       ]),
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      "int32"
     );
 
     // create fragment vec4 buffer
@@ -212,7 +237,8 @@ async function main() {
     const fragmentUniformMRBuffer = T3D.CreateGPUBuffer(
       device,
       uniformMRs,
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      "int32"
     );
 
     // create fragment MRUniforms2
@@ -222,7 +248,8 @@ async function main() {
     const fragmentUniformMR2Buffer = T3D.CreateGPUBuffer(
       device,
       uniformMR2s,
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      "int32"
     );
 
     // create fragment light buffer
@@ -265,7 +292,8 @@ async function main() {
     const fragmentUniformLightsBuffer = T3D.CreateGPUBuffer(
       device,
       lightUniformData,
-      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      "float32"
     );
 
     const bindGroupLayout: GPUBindGroupEntry[] = [
@@ -538,10 +566,10 @@ async function main() {
       if (uv0Buffer !== null) {
         renderPass.setVertexBuffer(2, uv0Buffer);
       }
-      renderPass.setIndexBuffer(indexBuffer, "uint16");
+      renderPass.setIndexBuffer(indexBuffer, indexDataType);
 
       renderPass.setBindGroup(0, sceneUniformBindGroup);
-      renderPass.drawIndexed(indexData.length, 1);
+      renderPass.drawIndexed(indexCount, 1);
       renderPass.endPass();
       device.queue.submit([commandEncoder.finish()]);
     }

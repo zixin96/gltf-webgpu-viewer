@@ -26,9 +26,9 @@ export class Transforms {
 
   public static CreateGPUBuffer(
     device: GPUDevice,
-    data: Float32Array | Uint16Array | Int32Array,
-    usageFlag: GPUBufferUsageFlags = GPUBufferUsage.VERTEX |
-      GPUBufferUsage.COPY_DST
+    data: any,
+    usageFlag: GPUBufferUsageFlags,
+    dataType: string = "float32"
   ) {
     let desc = {
       size: (data.byteLength + 3) & ~3,
@@ -38,11 +38,11 @@ export class Transforms {
     let buffer = device.createBuffer(desc);
 
     let writeArray: any;
-    if (data instanceof Uint16Array) {
+    if (dataType === "uint16") {
       writeArray = new Uint16Array(buffer.getMappedRange());
-    } else if (data instanceof Float32Array) {
+    } else if (dataType === "float32") {
       writeArray = new Float32Array(buffer.getMappedRange());
-    } else if (data instanceof Int32Array) {
+    } else if (dataType === "int32") {
       writeArray = new Int32Array(buffer.getMappedRange());
     } else {
       console.error("Unsupported GPUBuffer Data Type!");
