@@ -1,8 +1,4 @@
-#version 310 es
 // change this each time we test a new model
-#define HAS_NORMAL_VEC3 1
-#define HAS_POSITION_VEC3 1
-#define HAS_TEXCOORD_0_VEC2 1
 #define GLSLIFY 1
 #define GLSLIFY 1
 #ifdef HAS_MORPH_TARGETS

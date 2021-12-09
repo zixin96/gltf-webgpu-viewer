@@ -1,20 +1,30 @@
-import { Texture, WebIO, TextureInfo, Mesh } from "@gltf-transform/core";
+import {
+  Texture,
+  WebIO,
+  TextureInfo,
+  Mesh,
+  Accessor,
+} from "@gltf-transform/core";
 import { mat4, vec3, vec4 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
-import { SimpleTextureShader } from "./shaders";
 import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
 
 const createCamera = require("3d-view-controls");
+const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
+const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
+
+let pbrShader = pbrShaderRaw.default;
+let vertShader = vertShaderRaw.default;
 
 async function main() {
   const gpu = await T3D.InitWebGPU();
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
   const io = new WebIO();
-
+  const modelName = "BoxInterleaved";
   let doc = await io.read(
-    "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
+    `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF-Binary/${modelName}.glb`
   );
 
   const modelList = <HTMLInputElement>document.getElementById("gltf-model");
@@ -40,19 +50,20 @@ async function main() {
   const primitive = mesh!.listPrimitives()[0];
   const primitiveMaterial = primitive.getMaterial();
 
+  let vertDefines = ["#version 310 es\n"];
+  let fragDefines = ["#version 310 es\n"];
+
   // create vertex attributes and layout
-  const vertexData = primitive
-    .getAttribute("POSITION")
-    ?.getArray() as Float32Array;
-  const vertexBuffer = T3D.CreateGPUBuffer(device, vertexData);
+  let gpuVertexBufferLayout = [];
 
-  const normalData = primitive
-    .getAttribute("NORMAL")
-    ?.getArray() as Float32Array;
-  const normalBuffer = T3D.CreateGPUBuffer(device, normalData);
+  const posAccessor: Accessor | null = primitive.getAttribute("POSITION");
+  if (posAccessor !== null) {
+    vertDefines.push(" #define HAS_POSITION_VEC3 1\n");
+    fragDefines.push(" #define HAS_POSITION_VEC3 1\n");
+    var vertexData = posAccessor.getArray() as Float32Array;
+    var vertexBuffer = T3D.CreateGPUBuffer(device, vertexData);
 
-  let gpuVertexBufferLayout = [
-    {
+    gpuVertexBufferLayout.push({
       arrayStride: 12,
       attributes: [
         {
@@ -61,8 +72,17 @@ async function main() {
           offset: 0,
         },
       ],
-    },
-    {
+    });
+  }
+
+  const norAccessor: Accessor | null = primitive.getAttribute("NORMAL");
+  if (norAccessor !== null) {
+    vertDefines.push(" #define HAS_NORMAL_VEC3 1\n");
+    fragDefines.push(" #define HAS_NORMAL_VEC3 1\n");
+    var normalData = norAccessor.getArray() as Float32Array;
+    var normalBuffer = T3D.CreateGPUBuffer(device, normalData);
+
+    gpuVertexBufferLayout.push({
       arrayStride: 12,
       attributes: [
         {
@@ -71,8 +91,27 @@ async function main() {
           offset: 0,
         },
       ],
-    },
-  ];
+    });
+  }
+
+  const tex0Accessor: Accessor | null = primitive.getAttribute("TEXCOORD_0");
+  if (tex0Accessor !== null) {
+    vertDefines.push("#define HAS_TEXCOORD_0_VEC2 1\n");
+    fragDefines.push("#define HAS_TEXCOORD_0_VEC2 1\n");
+    var uv0Data = tex0Accessor.getArray() as Float32Array;
+    var uv0Buffer = T3D.CreateGPUBuffer(device, uv0Data);
+
+    gpuVertexBufferLayout.push({
+      arrayStride: 8,
+      attributes: [
+        {
+          shaderLocation: 2,
+          format: "float32x2",
+          offset: 0,
+        },
+      ],
+    });
+  }
 
   // create index buffer
   const indexData = primitive.getIndices()?.getArray() as Uint16Array;
@@ -299,28 +338,11 @@ async function main() {
   ];
 
   // create base color texture if it has one
+  // ! Every texture follow this pattern
   const baseColorTexture = primitiveMaterial?.getBaseColorTexture();
-  let hasBaseColorTexture = false;
   if (baseColorTexture !== null) {
-    hasBaseColorTexture = true;
+    fragDefines.push("#define HAS_BASE_COLOR_MAP 1\n");
     const baseColorTextureInfo = primitiveMaterial?.getBaseColorTextureInfo();
-
-    var uvData = primitive
-      .getAttribute("TEXCOORD_0")
-      ?.getArray() as Float32Array;
-    var uvBuffer = T3D.CreateGPUBuffer(device, uvData);
-
-    gpuVertexBufferLayout.push({
-      arrayStride: 8,
-      attributes: [
-        {
-          shaderLocation: 2,
-          format: "float32x2",
-          offset: 0,
-        },
-      ],
-    });
-
     const ts = await Textures.CreateTexture(
       device,
       baseColorTexture!,
@@ -339,11 +361,12 @@ async function main() {
   }
 
   //create render pipeline
-  const shader = SimpleTextureShader.glslShaders();
+  const vDefines = vertDefines.reduce((preDef, curDef) => preDef + curDef, "");
+  const fDefines = fragDefines.reduce((preDef, curDef) => preDef + curDef, "");
   const pipeline = device.createRenderPipeline({
     vertex: {
       module: device.createShaderModule({
-        code: glslang.compileGLSL(shader.vertex, "vertex"),
+        code: glslang.compileGLSL(vDefines + vertShader, "vertex"),
       }),
       entryPoint: "main",
       // @ts-ignore
@@ -351,7 +374,7 @@ async function main() {
     },
     fragment: {
       module: device.createShaderModule({
-        code: glslang.compileGLSL(shader.fragment, "fragment"),
+        code: glslang.compileGLSL(fDefines + pbrShader, "fragment"),
       }),
       entryPoint: "main",
       targets: [
@@ -436,8 +459,8 @@ async function main() {
     renderPass.setPipeline(pipeline);
     renderPass.setVertexBuffer(0, vertexBuffer);
     renderPass.setVertexBuffer(1, normalBuffer);
-    if (hasBaseColorTexture) {
-      renderPass.setVertexBuffer(2, uvBuffer);
+    if (tex0Accessor !== null) {
+      renderPass.setVertexBuffer(2, uv0Buffer);
     }
     renderPass.setIndexBuffer(indexBuffer, "uint16");
 
