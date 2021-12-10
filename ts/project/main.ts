@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "DamagedHelmet";
+  const modelName = "DragonAttenuation";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -153,6 +153,14 @@ async function main() {
 
         const primitive = mesh!.listPrimitives()[p];
         const primitiveMaterial = primitive.getMaterial();
+
+        const volumnExt = primitiveMaterial?.getExtension(
+          "KHR_materials_volume"
+        );
+        if (volumnExt !== null) {
+          // @ts-ignore
+          console.log(volumnExt.getThicknessTexture());
+        }
 
         let vertDefines = ["#version 310 es\n"];
         let fragDefines = ["#version 310 es\n"];

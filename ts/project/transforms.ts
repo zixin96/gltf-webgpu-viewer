@@ -14,8 +14,8 @@ export class Transforms {
     const canvas = document.getElementById(
       "canvas-webgpu"
     ) as HTMLCanvasElement;
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = document.body.clientWidth;
+    canvas.height = document.body.clientHeight;
     const adapter = await navigator.gpu?.requestAdapter();
     const device = (await adapter?.requestDevice()) as GPUDevice;
     const context = canvas.getContext("webgpu") as unknown as GPUCanvasContext;
