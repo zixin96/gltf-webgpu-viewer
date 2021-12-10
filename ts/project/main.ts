@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "AntiqueCamera";
+  const modelName = "Duck";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -103,10 +103,10 @@ async function main() {
       gpu.canvas.width / gpu.canvas.height
     );
     vpMatrix = vp.viewProjectionMatrix;
-
     let rotation = vec4.fromValues(0, 0, 0, 0);
     let camera = createCamera(gpu.canvas, vp.cameraOption);
-    let eyePosition = new Float32Array(T3D.CameraPosition);
+
+    let eyePosition = new Float32Array(camera.eye.flat());
 
     async function drawNodeMesh(node: Node) {
       function createVertexBuffer(name: string, shaderLoc: number) {
@@ -286,11 +286,9 @@ async function main() {
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
       );
-
-      // create fragment light buffer
       const defaultLights = [
         {
-          direction: [0.5, -0.707, -0.49],
+          direction: [0.5, 0.707, 0.49],
           range: -1,
           color: [1, 1, 1],
           intensity: 1,
@@ -300,10 +298,70 @@ async function main() {
           type: 0,
         },
         {
-          direction: [-0.5, 0.707, 0.5],
+          direction: [-0.5, -0.707, -0.5],
           range: -1,
           color: [1, 1, 1],
           intensity: 0.5,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [0.5, 0.707, -0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [0.5, -0.707, 0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [-0.5, 0.707, 0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [0.5, -0.707, -0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [-0.5, 0.707, -0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
+          position: [0, 0, 0],
+          innerConeCos: 1,
+          outerConeCos: 0.707,
+          type: 0,
+        },
+        {
+          direction: [-0.5, -0.707, 0.5],
+          range: -1,
+          color: [1, 1, 1],
+          intensity: 1.0,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -547,12 +605,13 @@ async function main() {
       };
     }
 
-    // let meshInfos: any = [];
-    // nodesWithMesh.forEach((node) => {
-    //   meshInfos.push()
-    // })
-    const firstMeshInfo = await drawNodeMesh(nodesWithMesh[0]);
-    const secondMeshInfo = await drawNodeMesh(nodesWithMesh[1]);
+    let meshInfos: any = [];
+    for (let i = 0; i < nodesWithMesh.length; i++) {
+      meshInfos.push(await drawNodeMesh(nodesWithMesh[i]));
+    }
+
+    // const firstMeshInfo = ;
+    // const secondMeshInfo = await drawNodeMesh(nodesWithMesh[1]);
 
     //render pass
     const depthTexture = device.createTexture({
@@ -585,61 +644,36 @@ async function main() {
         mat4.multiply(vpMatrix, pMatrix, vMatrix);
         eyePosition = new Float32Array(camera.eye.flat());
 
-        // first mesh update
-        device.queue.writeBuffer(
-          firstMeshInfo.vertexUniformBuffer,
-          0,
-          vpMatrix as ArrayBuffer
-        );
-        device.queue.writeBuffer(
-          firstMeshInfo.fragmentUniformVec3sBuffer,
-          16,
-          eyePosition
-        );
+        for (let i = 0; i < meshInfos.length; i++) {
+          device.queue.writeBuffer(
+            meshInfos[i].vertexUniformBuffer,
+            0,
+            vpMatrix as ArrayBuffer
+          );
+          device.queue.writeBuffer(
+            meshInfos[i].fragmentUniformVec3sBuffer,
+            16,
+            eyePosition
+          );
+        }
+      }
 
-        // second mesh update
+      for (let i = 0; i < meshInfos.length; i++) {
+        const modelMatrix = meshInfos[i].meshWorldMatrix;
+        const normalMatrix = mat4.create();
+        mat4.invert(normalMatrix, modelMatrix);
+        mat4.transpose(normalMatrix, normalMatrix);
         device.queue.writeBuffer(
-          secondMeshInfo.vertexUniformBuffer,
-          0,
-          vpMatrix as ArrayBuffer
+          meshInfos[i].vertexUniformBuffer,
+          64,
+          modelMatrix as ArrayBuffer
         );
         device.queue.writeBuffer(
-          secondMeshInfo.fragmentUniformVec3sBuffer,
-          16,
-          eyePosition
+          meshInfos[i].vertexUniformBuffer,
+          128,
+          normalMatrix as ArrayBuffer
         );
       }
-      // first mesh transform update
-      const modelMatrix2 = firstMeshInfo.meshWorldMatrix;
-      const normalMatrix2 = mat4.create();
-      mat4.invert(normalMatrix2, modelMatrix2);
-      mat4.transpose(normalMatrix2, normalMatrix2);
-      device.queue.writeBuffer(
-        firstMeshInfo.vertexUniformBuffer,
-        64,
-        modelMatrix2 as ArrayBuffer
-      );
-      device.queue.writeBuffer(
-        firstMeshInfo.vertexUniformBuffer,
-        128,
-        normalMatrix2 as ArrayBuffer
-      );
-
-      // second mesh transform update
-      const modelMatrix1 = secondMeshInfo.meshWorldMatrix;
-      const normalMatrix1 = mat4.create();
-      mat4.invert(normalMatrix1, modelMatrix1);
-      mat4.transpose(normalMatrix1, normalMatrix1);
-      device.queue.writeBuffer(
-        secondMeshInfo.vertexUniformBuffer,
-        64,
-        modelMatrix1 as ArrayBuffer
-      );
-      device.queue.writeBuffer(
-        secondMeshInfo.vertexUniformBuffer,
-        128,
-        normalMatrix1 as ArrayBuffer
-      );
 
       renderPassDescription.colorAttachments[0].view = gpu.context
         .getCurrentTexture()
@@ -648,33 +682,21 @@ async function main() {
       const renderPass = commandEncoder.beginRenderPass(
         renderPassDescription as GPURenderPassDescriptor
       );
-      // draw first mesh
-      renderPass.setPipeline(firstMeshInfo.pipeline);
-      renderPass.setVertexBuffer(0, firstMeshInfo.vertexBuffer);
-      renderPass.setVertexBuffer(1, firstMeshInfo.normalBuffer);
-      renderPass.setVertexBuffer(2, firstMeshInfo.uv0Buffer);
-      renderPass.setVertexBuffer(3, firstMeshInfo.color0Buffer);
-      renderPass.setVertexBuffer(4, firstMeshInfo.tangentBuffer);
-      renderPass.setIndexBuffer(
-        firstMeshInfo.indexBuffer,
-        firstMeshInfo.indexDataType
-      );
-      renderPass.setBindGroup(0, firstMeshInfo.sceneUniformBindGroup);
-      renderPass.drawIndexed(firstMeshInfo.indexCount, 1);
 
-      // draw second mesh
-      renderPass.setPipeline(secondMeshInfo.pipeline);
-      renderPass.setVertexBuffer(0, secondMeshInfo.vertexBuffer);
-      renderPass.setVertexBuffer(1, secondMeshInfo.normalBuffer);
-      renderPass.setVertexBuffer(2, secondMeshInfo.uv0Buffer);
-      renderPass.setVertexBuffer(3, secondMeshInfo.color0Buffer);
-      renderPass.setVertexBuffer(4, secondMeshInfo.tangentBuffer);
-      renderPass.setIndexBuffer(
-        secondMeshInfo.indexBuffer,
-        secondMeshInfo.indexDataType
-      );
-      renderPass.setBindGroup(0, secondMeshInfo.sceneUniformBindGroup);
-      renderPass.drawIndexed(secondMeshInfo.indexCount, 1);
+      for (let i = 0; i < meshInfos.length; i++) {
+        renderPass.setPipeline(meshInfos[i].pipeline);
+        renderPass.setVertexBuffer(0, meshInfos[i].vertexBuffer);
+        renderPass.setVertexBuffer(1, meshInfos[i].normalBuffer);
+        renderPass.setVertexBuffer(2, meshInfos[i].uv0Buffer);
+        renderPass.setVertexBuffer(3, meshInfos[i].color0Buffer);
+        renderPass.setVertexBuffer(4, meshInfos[i].tangentBuffer);
+        renderPass.setIndexBuffer(
+          meshInfos[i].indexBuffer,
+          meshInfos[i].indexDataType
+        );
+        renderPass.setBindGroup(0, meshInfos[i].sceneUniformBindGroup);
+        renderPass.drawIndexed(meshInfos[i].indexCount, 1);
+      }
 
       renderPass.endPass();
       device.queue.submit([commandEncoder.finish()]);

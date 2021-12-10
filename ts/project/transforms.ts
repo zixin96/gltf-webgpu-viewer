@@ -88,8 +88,7 @@ export class Transforms {
     const cameraOption = {
       eye: this.CameraPosition,
       center: this.LookDirection,
-      zoomMax: 100,
-      zoomSpeed: 2,
+      zoomSpeed: 20,
     };
 
     return {
