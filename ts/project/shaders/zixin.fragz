@@ -74,12 +74,9 @@ layout(set=0, binding=1) uniform FragmentFloats {
     float u_ClearcoatRoughnessFactor;
     float u_KHR_materials_specular_specularFactor;
     float u_TransmissionFactor;
-    float u_ThicknessFactor;
-    float u_AttenuationDistance;
+
     float u_Ior;
     float u_AlphaCutoff;
-
- 
 };
 
 layout(set=0, binding=2) uniform FragmentInts {
@@ -97,17 +94,17 @@ layout(set=0, binding=4) uniform FragmentVec3s {
     vec3 u_SpecularFactor;
     vec3 u_SheenColorFactor;
     vec3 u_KHR_materials_specular_specularColorFactor;
-    vec3 u_AttenuationColor;
+  
 };
 
 
 
-// layout(set=0, binding=5)  uniform FragmentMat4s {
-//     mat4 u_ModelMatrix;
-//     mat4 u_ViewMatrix;
-//     mat4 u_ProjectionMatrix;
-//     mat3 u_NormalUVTransform;
-// };
+layout(set=0, binding=5)  uniform FragmentMat4s {
+    mat4 u_ModelMatrix;
+    mat4 u_ViewMatrix;
+    mat4 u_ProjectionMatrix;
+    // mat3 u_NormalUVTransform;
+};
 
 // layout(set=0, binding=6) uniform FragmentMat3s {
 
@@ -168,7 +165,7 @@ layout(set=0, binding=16) uniform NormalScale {
 
 
 layout(set=0, binding=17) uniform sampler u_OcclusionSampler;
-layout(set=0, binding=18) uniform texture2D u_OcclusionData; // max uniform is 19
+layout(set=0, binding=18) uniform texture2D u_OcclusionData; 
 
 layout(set=0, binding=19) uniform occlusionInfo {
     int u_OcclusionUVSet; 
@@ -177,7 +174,7 @@ layout(set=0, binding=19) uniform occlusionInfo {
 
 
 layout(set=0, binding=20) uniform sampler u_EmissiveSampler;
-layout(set=0, binding=21) uniform texture2D u_EmissiveData; // max uniform is 19
+layout(set=0, binding=21) uniform texture2D u_EmissiveData;
 
 layout(set=0, binding=22) uniform emissiveInfo {
     int u_EmissiveUVSet; 
@@ -512,11 +509,17 @@ vec2 getSpecularColorUV()
 
 #ifdef MATERIAL_TRANSMISSION
 
-uniform sampler2D u_TransmissionSampler;
-uniform int u_TransmissionUVSet;
-uniform mat3 u_TransmissionUVTransform;
-uniform sampler2D u_TransmissionFramebufferSampler;
-uniform ivec2 u_TransmissionFramebufferSize;
+layout(set=0, binding=26) uniform sampler u_TransmissionSampler;
+layout(set=0, binding=27) uniform texture2D u_TransmissionData;
+
+layout(set=0, binding=28) uniform transmissionInfo {
+    int u_TransmissionUVSet; 
+    ivec2 u_TransmissionFramebufferSize;
+    //     mat3 u_TransmissionUVTransform;
+};
+
+layout(set=0, binding=29) uniform sampler u_TransmissionFramebufferSampler;
+layout(set=0, binding=30) uniform sampler u_TransmissionFramebufferData;
 
 vec2 getTransmissionUV()
 {
@@ -533,9 +536,16 @@ vec2 getTransmissionUV()
 
 #ifdef MATERIAL_VOLUME
 
-uniform sampler2D u_ThicknessSampler;
-uniform int u_ThicknessUVSet;
-uniform mat3 u_ThicknessUVTransform;
+layout(set=0, binding=23) uniform sampler u_ThicknessSampler;
+layout(set=0, binding=24) uniform texture2D u_ThicknessData;
+
+layout(set=0, binding=25) uniform thicknessInfo {
+    int u_ThicknessUVSet; 
+    float u_ThicknessFactor;
+    float u_AttenuationDistance;
+    vec3 u_AttenuationColor;
+    //     mat3 u_ThicknessUVTransform;
+};
 
 vec2 getThicknessUV()
 {
@@ -1171,7 +1181,7 @@ MaterialInfo getVolumeInfo(MaterialInfo info)
     info.attenuationDistance = u_AttenuationDistance;
 
 #ifdef HAS_THICKNESS_MAP
-    vec4 thicknessSample = texture(u_ThicknessSampler, getThicknessUV());
+    vec4 thicknessSample = texture(sampler2D(u_ThicknessData, u_ThicknessSampler), getThicknessUV());
     info.thickness *= thicknessSample.g;
 #endif
     return info;

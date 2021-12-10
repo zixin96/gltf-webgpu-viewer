@@ -157,10 +157,10 @@ async function main() {
         const volumnExt = primitiveMaterial?.getExtension(
           "KHR_materials_volume"
         );
-        if (volumnExt !== null) {
-          // @ts-ignore
-          console.log(volumnExt.getThicknessTexture());
-        }
+
+        const transmissionExt = primitiveMaterial?.getExtension(
+          "KHR_materials_transmission"
+        );
 
         let vertDefines = ["#version 310 es\n"];
         let fragDefines = ["#version 310 es\n"];
@@ -197,6 +197,13 @@ async function main() {
           usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
+        // create fragment mat4s buffer layout
+        const fragMat4BufferSize = 4 * 4 * 4 * 3; // 3 mat4 matrices
+        const fragMat4Buffer = device.createBuffer({
+          size: fragMat4BufferSize,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
         // create fragment uniform float buffer
         const fragmentUniformFloatsBuffer = T3D.CreateGPUBuffer(
           device,
@@ -211,8 +218,8 @@ async function main() {
             1.0, // u_ClearcoatRoughnessFactor
             1.0, // u_KHR_materials_specular_specularFactor
             1.0, // u_TransmissionFactor
-            1.0, // u_ThicknessFactor
-            1.0, // u_AttenuationDistance
+            // 1.0, // u_ThicknessFactor
+            // 1.0, // u_AttenuationDistance
             1.0, // u_Ior
             1.0, // u_AlphaCutoff
           ]),
@@ -265,7 +272,7 @@ async function main() {
           ...defaultSpecularSheenKHRAttenu, // u_SpecularFactor
           ...defaultSpecularSheenKHRAttenu, // u_SheenColorFactor
           ...defaultSpecularSheenKHRAttenu, // u_KHR_materials_specular_specularColorFactor
-          ...defaultSpecularSheenKHRAttenu, // u_AttenuationColor
+          // ...defaultSpecularSheenKHRAttenu, // u_AttenuationColor
         ]);
         const fragmentUniformVec3sBuffer = T3D.CreateGPUBuffer(
           device,
@@ -290,6 +297,20 @@ async function main() {
         const uniformEmissiveBufferSize = 4; // u_EmissiveUVSet
         const uniformEmissiveBuffer = device.createBuffer({
           size: uniformEmissiveBufferSize,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        // create fragment uniform for thickness texture
+        const uniformThicknessBufferSize = 8; // u_ThicknessUVSet and u_ThicknessFactor
+        const uniformThicknessBuffer = device.createBuffer({
+          size: uniformThicknessBufferSize,
+          usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+        });
+
+        // create fragment uniform for transmission texture
+        const uniformTransmissionBufferSize = 12; // u_TransmissionUVSet and u_TransmissionFramebufferSize
+        const uniformTransmissionBuffer = device.createBuffer({
+          size: uniformTransmissionBufferSize,
           usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         });
 
@@ -414,6 +435,14 @@ async function main() {
               buffer: vertexUniformBuffer,
               offset: 0,
               size: vertexUniformsBufferSize,
+            },
+          },
+          {
+            binding: 5,
+            resource: {
+              buffer: fragMat4Buffer,
+              offset: 0,
+              size: fragMat4BufferSize,
             },
           },
           {
@@ -640,6 +669,118 @@ async function main() {
           );
         }
 
+        // extension textures
+        if (volumnExt !== null && volumnExt !== undefined) {
+          fragDefines.push("#define MATERIAL_VOLUME 1\n");
+          // @ts-ignore
+          const thicknessTexture = volumnExt.getThicknessTexture();
+          if (thicknessTexture !== null && thicknessTexture !== undefined) {
+            fragDefines.push("#define HAS_THICKNESS_MAP 1\n");
+
+            const thicknessTextureInfo =
+              // @ts-ignore
+              volumnExt.getThicknessTextureInfo();
+            const ts = await Textures.CreateTexture(
+              device,
+              thicknessTexture!,
+              thicknessTextureInfo!
+            );
+            bindGroupLayout.push({
+              binding: 23,
+              // @ts-ignore
+              resource: ts.sampler,
+            });
+            bindGroupLayout.push({
+              binding: 24,
+              // @ts-ignore
+              resource: ts.texture.createView(),
+            });
+
+            bindGroupLayout.push({
+              binding: 25,
+              resource: {
+                buffer: uniformThicknessBuffer,
+              },
+            });
+
+            device.queue.writeBuffer(
+              uniformThicknessBuffer,
+              0,
+              new Int32Array([thicknessTextureInfo!.getTexCoord()])
+            );
+
+            device.queue.writeBuffer(
+              uniformThicknessBuffer,
+              4,
+              // @ts-ignore
+              new Float32Array([volumnExt!.getThicknessFactor()])
+            );
+
+            device.queue.writeBuffer(
+              uniformThicknessBuffer,
+              8,
+              // @ts-ignore
+              new Float32Array([volumnExt!.getAttenuationDistance()])
+            );
+
+            device.queue.writeBuffer(
+              uniformThicknessBuffer,
+              12,
+              // @ts-ignore
+              new Float32Array([volumnExt!.getAttenuationColor()])
+            );
+          }
+        }
+
+        console.log(transmissionExt)
+        if (transmissionExt !== null && transmissionExt !== undefined) {
+          // fragDefines.push("#define MATERIAL_TRANSMISSION 1\n");
+          // @ts-ignore
+          const transmissionTexture = transmissionExt.getTransmissionTexture();
+          if (
+            transmissionTexture !== null &&
+            transmissionTexture !== undefined
+          ) {
+            const transmissionTextureInfo =
+              // @ts-ignore
+              transmissionExt.getTransmissionTextureInfo();
+            const ts = await Textures.CreateTexture(
+              device,
+              transmissionTexture!,
+              transmissionTextureInfo!
+            );
+            bindGroupLayout.push({
+              binding: 26,
+              // @ts-ignore
+              resource: ts.sampler,
+            });
+            bindGroupLayout.push({
+              binding: 27,
+              // @ts-ignore
+              resource: ts.texture.createView(),
+            });
+            bindGroupLayout.push({
+              binding: 28,
+              resource: {
+                buffer: uniformTransmissionBuffer,
+              },
+            });
+            device.queue.writeBuffer(
+              uniformTransmissionBuffer,
+              0,
+              new Int32Array([transmissionTextureInfo!.getTexCoord()])
+            );
+            device.queue.writeBuffer(
+              uniformTransmissionBuffer,
+              4,
+              new Int32Array([
+                // @ts-ignore
+                transmissionExt!.getTransmissionFrameBufferSize(),
+              ])
+            );
+          }
+        }
+
         //create render pipeline
         const vDefines = vertDefines.reduce(
           (preDef, curDef) => preDef + curDef,
@@ -717,6 +858,7 @@ async function main() {
           sceneUniformBindGroup,
           pipeline,
           vertexUniformBuffer,
+          fragMat4Buffer,
           fragmentUniformVec3sBuffer,
           indexDataType,
         });
@@ -765,6 +907,23 @@ async function main() {
             0,
             vpMatrix as ArrayBuffer
           );
+
+          device.queue.writeBuffer(
+            primitiveInfos[i].fragMat4Buffer,
+            0,
+            primitiveInfos[i].meshWorldMatrix
+          );
+          device.queue.writeBuffer(
+            primitiveInfos[i].fragMat4Buffer,
+            64,
+            vMatrix as ArrayBuffer
+          );
+          device.queue.writeBuffer(
+            primitiveInfos[i].fragMat4Buffer,
+            128,
+            pMatrix as ArrayBuffer
+          );
+
           device.queue.writeBuffer(
             primitiveInfos[i].fragmentUniformVec3sBuffer,
             16,
