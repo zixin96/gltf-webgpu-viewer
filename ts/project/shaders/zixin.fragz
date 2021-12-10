@@ -1236,9 +1236,9 @@ void main()
 {
     vec4 baseColor = getBaseColor();
 
-#if ALPHAMODE == ALPHAMODE_OPAQUE
-    baseColor.a = 1.0;
-#endif
+// #if ALPHAMODE == ALPHAMODE_OPAQUE
+//     baseColor.a = 1.0;
+// #endif
 
 #ifdef MATERIAL_UNLIT
 #if ALPHAMODE == ALPHAMODE_MASK

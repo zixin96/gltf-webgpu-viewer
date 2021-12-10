@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "BoomBox";
+  const modelName = "Box";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -308,7 +308,7 @@ async function main() {
           direction: [-0.5, -0.707, -0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 0.5,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -318,7 +318,7 @@ async function main() {
           direction: [0.5, 0.707, -0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -328,7 +328,7 @@ async function main() {
           direction: [0.5, -0.707, 0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -338,7 +338,7 @@ async function main() {
           direction: [-0.5, 0.707, 0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -348,7 +348,7 @@ async function main() {
           direction: [0.5, -0.707, -0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -358,7 +358,7 @@ async function main() {
           direction: [-0.5, 0.707, -0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -368,7 +368,7 @@ async function main() {
           direction: [-0.5, -0.707, 0.5],
           range: -1,
           color: [1, 1, 1],
-          intensity: 1.0,
+          intensity: 0.1,
           position: [0, 0, 0],
           innerConeCos: 1,
           outerConeCos: 0.707,
@@ -652,11 +652,27 @@ async function main() {
           targets: [
             {
               format: gpu.format as GPUTextureFormat,
+              blend: {
+                color:
+                  primitiveMaterial?.getAlphaMode() !== "BLEND"
+                    ? { operation: "add", srcFactor: "one", dstFactor: "zero" }
+                    : {
+                        operation: "add",
+                        srcFactor: "src-alpha",
+                        dstFactor: "one-minus-src-alpha",
+                      },
+                alpha: {
+                  operation: "add",
+                  srcFactor: "zero",
+                  dstFactor: "one",
+                },
+              },
             },
           ],
         },
         primitive: {
           topology: "triangle-list",
+          cullMode: primitiveMaterial?.getDoubleSided() ? "none" : "back",
         },
         depthStencil: {
           format: "depth24plus",
