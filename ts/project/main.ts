@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "Box";
+  const modelName = "2CylinderEngine";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
