@@ -84,8 +84,6 @@ layout(set=0, binding=1) uniform FragmentFloats {
 
 layout(set=0, binding=2) uniform FragmentInts {
     int u_NormalUVSet; // check
-    int u_EmissiveUVSet; // check
-
 };
 
 layout(set=0, binding=3) uniform FragmentVec4s {
@@ -112,7 +110,7 @@ layout(set=0, binding=4) uniform FragmentVec3s {
 // };
 
 // layout(set=0, binding=6) uniform FragmentMat3s {
-//     mat3 u_EmissiveUVTransform;
+
 //     mat3 u_OcclusionUVTransform;
 // };
 
@@ -167,7 +165,7 @@ layout(set=0, binding=16) uniform NormalScale {
 };
    
 // general materials
-// uniform sampler2D u_EmissiveSampler;
+
 
 layout(set=0, binding=17) uniform sampler u_OcclusionSampler;
 layout(set=0, binding=18) uniform texture2D u_OcclusionData; // max uniform is 19
@@ -177,6 +175,14 @@ layout(set=0, binding=19) uniform occlusionInfo {
     float u_OcclusionStrength;
 };
 
+
+layout(set=0, binding=20) uniform sampler u_EmissiveSampler;
+layout(set=0, binding=21) uniform texture2D u_EmissiveData; // max uniform is 19
+
+layout(set=0, binding=22) uniform emissiveInfo {
+    int u_EmissiveUVSet; 
+    //     mat3 u_EmissiveUVTransform;
+};
 
 const float GAMMA = 2.2;
 const float INV_GAMMA = 1.0 / GAMMA;
@@ -1417,7 +1423,7 @@ void main()
 
     f_emissive = u_EmissiveFactor;
 #ifdef HAS_EMISSIVE_MAP
-    f_emissive *= texture(u_EmissiveSampler, getEmissiveUV()).rgb;
+    f_emissive *= texture(sampler2D(u_EmissiveData, u_EmissiveSampler), getEmissiveUV()).rgb;
 #endif
 
     vec3 color = vec3(0);

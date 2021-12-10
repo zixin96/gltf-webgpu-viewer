@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "Box";
+  const modelName = "BoomBox";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -221,7 +221,6 @@ async function main() {
         new Int32Array([
           // choose the first set of UV coords
           0, // default u_NormalUVSet
-          0, // default u_EmissiveUVSet
         ]),
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
@@ -273,6 +272,13 @@ async function main() {
       const uniformOcclusionBufferSize = 8; // u_OcclusionUVSet and u_OcclusionStrength
       const uniformOcclusionBuffer = device.createBuffer({
         size: uniformOcclusionBufferSize,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
+
+      // create fragment uniform for emissive texture
+      const uniformEmissiveBufferSize = 4; // u_EmissiveUVSet
+      const uniformEmissiveBuffer = device.createBuffer({
+        size: uniformEmissiveBufferSize,
         usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
       });
 
@@ -582,6 +588,40 @@ async function main() {
           uniformOcclusionBuffer,
           4,
           new Float32Array([primitiveMaterial!.getOcclusionStrength()])
+        );
+      }
+
+      const emissiveTexture = primitiveMaterial!.getEmissiveTexture();
+      if (emissiveTexture !== null) {
+        fragDefines.push("#define HAS_EMISSIVE_MAP 1\n");
+        const emissiveTextureInfo = primitiveMaterial!.getEmissiveTextureInfo();
+        const ts = await Textures.CreateTexture(
+          device,
+          emissiveTexture!,
+          emissiveTextureInfo!
+        );
+        bindGroupLayout.push({
+          binding: 20,
+          // @ts-ignore
+          resource: ts.sampler,
+        });
+        bindGroupLayout.push({
+          binding: 21,
+          // @ts-ignore
+          resource: ts.texture.createView(),
+        });
+
+        bindGroupLayout.push({
+          binding: 22,
+          resource: {
+            buffer: uniformEmissiveBuffer,
+          },
+        });
+
+        device.queue.writeBuffer(
+          uniformEmissiveBuffer,
+          0,
+          new Int32Array([emissiveTextureInfo!.getTexCoord()])
         );
       }
 
