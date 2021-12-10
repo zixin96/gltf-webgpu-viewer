@@ -204,7 +204,6 @@ async function main() {
           1.0, // u_AttenuationDistance
           1.0, // u_Ior
           1.0, // u_AlphaCutoff
-          // 1.0, // u_OcclusionStrength
         ]),
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
       );
@@ -223,7 +222,6 @@ async function main() {
           // choose the first set of UV coords
           0, // default u_NormalUVSet
           0, // default u_EmissiveUVSet
-          // 0, // default u_OcclusionUVSet
         ]),
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
@@ -265,16 +263,11 @@ async function main() {
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
       );
 
-      // create fragment MRUniforms
-      const uniformMRs = new Int32Array([
-        0, // u_BaseColorUVSet
-      ]);
-      const fragmentUniformMRBuffer = T3D.CreateGPUBuffer(
-        device,
-        uniformMRs,
-        GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-        "int32"
-      );
+      const uniformBasedColorUVBufferSize = 4; // TODO: 8 if we have u_BaseColorUVTransform
+      const fragmentUniformBaseColorUV = device.createBuffer({
+        size: uniformBasedColorUVBufferSize,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
 
       // create fragment uniform for occlusion texture
       const uniformOcclusionBufferSize = 8; // u_OcclusionUVSet and u_OcclusionStrength
@@ -287,12 +280,13 @@ async function main() {
       const uniformMR2s = new Int32Array([
         0, // u_MetallicRoughnessUVSet
       ]);
-      const fragmentUniformMR2Buffer = T3D.CreateGPUBuffer(
+      const fragmentUniformMetallicUV = T3D.CreateGPUBuffer(
         device,
         uniformMR2s,
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
       );
+
       const defaultLights = [
         {
           direction: [0.5, 0.707, 0.49],
@@ -463,13 +457,13 @@ async function main() {
         bindGroupLayout.push({
           binding: 9,
           resource: {
-            buffer: fragmentUniformMRBuffer,
+            buffer: fragmentUniformBaseColorUV,
           },
         });
 
         // update which tex coord (0 or 1) does this map use
         device.queue.writeBuffer(
-          fragmentUniformMRBuffer,
+          fragmentUniformBaseColorUV,
           0, // first integer in the uniform block
           new Int32Array([baseColorTextureInfo!.getTexCoord()])
         );
@@ -539,12 +533,12 @@ async function main() {
         bindGroupLayout.push({
           binding: 15,
           resource: {
-            buffer: fragmentUniformMR2Buffer,
+            buffer: fragmentUniformMetallicUV,
           },
         });
 
         device.queue.writeBuffer(
-          fragmentUniformMRBuffer,
+          fragmentUniformMetallicUV,
           0,
           new Int32Array([metallicRoughnessTextureInfo!.getTexCoord()])
         );
