@@ -50,6 +50,8 @@ export class Transforms {
       writeArray = new Int32Array(buffer.getMappedRange());
     } else if (dataType === "uint32") {
       writeArray = new Uint32Array(buffer.getMappedRange());
+    } else if (dataType === "uint8") {
+      writeArray = new Uint8Array(buffer.getMappedRange());
     } else {
       console.error("Unsupported GPUBuffer Data Type!");
     }
