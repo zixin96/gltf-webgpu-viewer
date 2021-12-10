@@ -79,13 +79,13 @@ layout(set=0, binding=1) uniform FragmentFloats {
     float u_Ior;
     float u_AlphaCutoff;
 
-    float u_OcclusionStrength;
+ 
 };
 
 layout(set=0, binding=2) uniform FragmentInts {
     int u_NormalUVSet; // check
     int u_EmissiveUVSet; // check
-    int u_OcclusionUVSet; // check
+
 };
 
 layout(set=0, binding=3) uniform FragmentVec4s {
@@ -166,12 +166,16 @@ layout(set=0, binding=16) uniform NormalScale {
     float u_NormalScale;
 };
    
-
 // general materials
-
 // uniform sampler2D u_EmissiveSampler;
-// uniform sampler2D u_OcclusionSampler;
 
+layout(set=0, binding=17) uniform sampler u_OcclusionSampler;
+layout(set=0, binding=18) uniform texture2D u_OcclusionData; // max uniform is 19
+
+layout(set=0, binding=19) uniform occlusionInfo {
+    int u_OcclusionUVSet; 
+    float u_OcclusionStrength;
+};
 
 
 const float GAMMA = 2.2;
@@ -1340,7 +1344,7 @@ void main()
     float ao = 1.0;
     // Apply optional PBR terms for additional (optional) shading
 #ifdef HAS_OCCLUSION_MAP
-    ao = texture(u_OcclusionSampler, getOcclusionUV()).r;
+    ao = texture(sampler2D(u_OcclusionData, u_OcclusionSampler), getOcclusionUV()).r;
     f_diffuse = mix(f_diffuse, f_diffuse * ao, u_OcclusionStrength);
     // apply ambient occlusion to all lighting that is not punctual
     f_specular = mix(f_specular, f_specular * ao, u_OcclusionStrength);

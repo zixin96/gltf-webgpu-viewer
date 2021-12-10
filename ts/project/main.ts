@@ -30,7 +30,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   // const modelName = "2CylinderEngine";
-  const modelName = "Duck";
+  const modelName = "Box";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -204,7 +204,7 @@ async function main() {
           1.0, // u_AttenuationDistance
           1.0, // u_Ior
           1.0, // u_AlphaCutoff
-          1.0, // u_OcclusionStrength
+          // 1.0, // u_OcclusionStrength
         ]),
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
       );
@@ -223,7 +223,7 @@ async function main() {
           // choose the first set of UV coords
           0, // default u_NormalUVSet
           0, // default u_EmissiveUVSet
-          0, // default u_OcclusionUVSet
+          // 0, // default u_OcclusionUVSet
         ]),
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
@@ -275,6 +275,13 @@ async function main() {
         GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
         "int32"
       );
+
+      // create fragment uniform for occlusion texture
+      const uniformOcclusionBufferSize = 8; // u_OcclusionUVSet and u_OcclusionStrength
+      const uniformOcclusionBuffer = device.createBuffer({
+        size: uniformOcclusionBufferSize,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      });
 
       // create fragment MRUniforms2
       const uniformMR2s = new Int32Array([
@@ -540,6 +547,47 @@ async function main() {
           fragmentUniformMRBuffer,
           0,
           new Int32Array([metallicRoughnessTextureInfo!.getTexCoord()])
+        );
+      }
+
+      const occlusionTexture = primitiveMaterial!.getOcclusionTexture();
+      if (occlusionTexture !== null) {
+        fragDefines.push("#define HAS_OCCLUSION_MAP 1\n");
+        const occlusionTextureInfo =
+          primitiveMaterial!.getOcclusionTextureInfo();
+        const ts = await Textures.CreateTexture(
+          device,
+          occlusionTexture!,
+          occlusionTextureInfo!
+        );
+        bindGroupLayout.push({
+          binding: 17,
+          // @ts-ignore
+          resource: ts.sampler,
+        });
+        bindGroupLayout.push({
+          binding: 18,
+          // @ts-ignore
+          resource: ts.texture.createView(),
+        });
+
+        bindGroupLayout.push({
+          binding: 19,
+          resource: {
+            buffer: uniformOcclusionBuffer,
+          },
+        });
+
+        device.queue.writeBuffer(
+          uniformOcclusionBuffer,
+          0,
+          new Int32Array([occlusionTextureInfo!.getTexCoord()])
+        );
+
+        device.queue.writeBuffer(
+          uniformOcclusionBuffer,
+          4,
+          new Float32Array([primitiveMaterial!.getOcclusionStrength()])
         );
       }
 
