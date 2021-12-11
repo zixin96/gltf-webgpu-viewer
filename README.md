@@ -29,6 +29,8 @@ WebGPU is an unreleased Javascript Graphics API with its own shading language ca
 
 This projects uses [glTF-Transform](https://github.com/donmccurdy/glTF-Transform), a glTF 2.0 SDK for TypeScript, to load glTF files from the web. With this SDK, we can easily query the data inside glTF without implementing the glTF loading structure from scratch.
 
+It was quite an adventure to explore this new API and implement something really cool 😎. 
+
 ## Supported glTF Features
 
 ✅: fully supported
