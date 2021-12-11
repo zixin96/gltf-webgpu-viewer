@@ -11,6 +11,14 @@
 
 <!-- ABOUT THE PROJECT -->
 
+[Live demo](https://gltf-webgpu.netlify.app/) Use Edge/Chrome Canary and enter the following to the address field: 
+
+For Edge: 
+- edge://flags/#enable-unsafe-webgpu
+
+For Chrome: 
+- Chrome://flags/#enable-unsafe-webgpu
+
 ## About The Project
 
 > glTF is not "yet another file format."
