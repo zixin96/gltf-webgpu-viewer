@@ -21,7 +21,7 @@ For Chrome:
 
 > glTF is not "yet another file format."
 
-There are more than 70 different file formats for 3D data. Why do we need one more? What I like about glTF is that it can significantly simplify the [3D content pipeline](https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/images/contentPipelineWithGltf.png). Instead of implementing hundreds of importers and converters for various file formats, runtime applications only need to support glTF that is provided by custom converters such as obj2gltf.
+There are more than 70 different file formats for 3D data. Why do we need one more? glTF can significantly simplify the [3D content pipeline](https://github.com/KhronosGroup/glTF-Tutorials/blob/master/gltfTutorial/images/contentPipelineWithGltf.png). Instead of implementing hundreds of importers and converters for various file formats, runtime applications only need to support glTF that is provided by custom converters such as obj2gltf.
 
 WebGPU is an unreleased Javascript Graphics API with its own shading language called WGSL. However, this project uses GLSL as the shading language. [@webgpu/glslang](https://www.npmjs.com/package/@webgpu/glslang) converts GLSL to SPIR-V so that it can be used on WebGPU.
 
@@ -37,7 +37,7 @@ It was quite an adventure to explore this new API and implement something really
 
 ### Loading 
 
-- Loading glTF adn glb files (supported by `gl-Transform`) ✅
+- Loading glTF and glb files (supported by `gl-Transform`) ✅
 
 ### Core
 
@@ -93,7 +93,7 @@ The simplified structure of the project can be summarized using the following gr
 <h8 align="center">Figure 1: Simplified Structure</h8>
 </div>
 
-Only a single set of vertex and fragment shader is used. The functionality of the shaders are determined by `#define` preprocessor. These `#define`s are dynamically generated and inserted into the shaders. This is very similar to the shader architecture used in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) by KhronosGroup. In fact, the shaders are obtained directly from [glTF-Sample-Viewer](https://github.com/KhronosGroupglTF-Sample-Viewer), but they cannot be used directly in the WebGPU pipelines. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. All that is left is to pass these data to the shaders in WebGPU's way.
+Only a single set of vertex and fragment shader is used. The functionality of the shaders is determined by `#define` preprocessor. These `#define`s are dynamically generated and inserted into the shaders. This is very similar to the shader architecture used in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) by KhronosGroup. Shaders used in WebGL cannot be used directly in the WebGPU pipeline. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. The rest of the job is to carefully pass glTF data into the pipeline. Since primitives in a glTF file may use different shader programs, we need to use multiple pipelines to render multiple objects on the scene. 
 
 <!-- GETTING STARTED -->
 
@@ -111,7 +111,7 @@ To test out this project:
 
 <!-- USAGE EXAMPLES -->
 
-## Things that didn't go well
+## Limitations
 
 - My original intention to use GLSL is that I can study and reuse most of the shader codes in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer). However, adding an extra layer of conversion means that models with lots of primitives/meshes are loaded very slowly since the renderer creates and converts shaders per primitive. This is one of the disadvantages of using GLSL as the shading language.
 - Most of the rendering codes are squeezed into a single file. Also, there are some obvious opportunities for refactoring due to my initial unfamiliarity with WebGPU. My future plan is to make the renderer more object-oriented for readability and refactor some repeating code to following [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) principle. 
