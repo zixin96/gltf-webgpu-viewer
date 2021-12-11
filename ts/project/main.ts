@@ -27,7 +27,7 @@ async function main() {
   canvas.width = document.body.clientWidth;
   canvas.height = document.body.clientHeight;
   if (!navigator.gpu) {
-    let result = `Your current browser does not support WebGPU! Use Chrome/Edge Canary to open this page. See https://github.com/zixin96/gltf-webgpu-viewer`;
+    let result = `Your current browser does not support WebGPU! Use Chrome/Edge Canary to open this page. See GitHub README for instructions.`;
     $("#id_webgpu").html(result);
     return;
   }
