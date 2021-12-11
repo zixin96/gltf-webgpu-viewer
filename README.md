@@ -138,12 +138,14 @@ To test out this project:
 
 Thank you for all the authors below for making this project possible. 
 
-- [Practical WebGPU Graphics by Jack Xu, PhD](https://drxudotnet.com/Home/DownloadCode?bookId=20) for introducing me to the world of WebGPU and providing the base code for this project. 
 - [KhronosGroup/glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) for providing a wonderful place to study glTF renderer. Importantly, the shader source codes are derived from this project. 
 - [glTF-Transform by Don McCurdy](https://gltf-transform.donmccurdy.com/) for providing an easy-to-use SDK for loading and reading glTF files. 
 - [kainino0x/glslang](https://github.com/kainino0x/glslang.js) for providing a way to use GLSL shaders in WebGPU.
+- [mikolalysenko/3d-view-controls](https://github.com/mikolalysenko/3d-view-controls) for providing a user-friendly camera system.
+- [Practical WebGPU Graphics by Jack Xu, PhD](https://drxudotnet.com/Home/DownloadCode?bookId=20) for introducing me to the world of WebGPU and providing the base code for this project. 
 - [The Complete JavaScript Course 2022: From Zero to Expert! by Jonas Schmedtmann](https://www.udemy.com/course/the-complete-javascript-course/) for teaching me what "async/await" means and the fundamental of Javascript. Highly recommend this course! 
 - [Understanding TypeScript - 2022 Edition by Maximilian Schwarzmüller](https://www.udemy.com/course/understanding-typescript/) for teaching me those finer details about Typescript. 
+
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
