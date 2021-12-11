@@ -33,7 +33,7 @@ It was quite an adventure to explore this new API and implement something really
 
 ✅: fully supported
 
-❗: partially supported (loading time is long)
+❗: partially supported (undesirable loading time)
 
 ### Loading 
 
