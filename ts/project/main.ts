@@ -8,6 +8,7 @@ import { mat4, vec3, vec4 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { Textures } from "./Textures";
 import glslangModule from "@webgpu/glslang/dist/web-devel-onefile/glslang";
+import $ from "jquery";
 
 const createCamera = require("3d-view-controls");
 
@@ -20,8 +21,25 @@ componentTypeMap.set(5125, "uint32");
 componentTypeMap.set(5126, "float32");
 
 async function main() {
-  const gpu = await T3D.InitWebGPU();
-  const device = gpu.device;
+  const canvas = document.getElementById(
+    "canvas-webgpu"
+  ) as HTMLCanvasElement;
+  canvas.width = document.body.clientWidth;
+  canvas.height = document.body.clientHeight;
+  if (!navigator.gpu) {
+    let result = `Your current browser does not support WebGPU! Use Chrome/Edge Canary to open this page. See https://github.com/zixin96/gltf-webgpu-viewer`;
+    $("#id_webgpu").html(result);
+    return;
+  }
+  const adapter = await navigator.gpu?.requestAdapter();
+  const device = (await adapter?.requestDevice()) as GPUDevice;
+  const context = canvas.getContext("webgpu") as unknown as GPUCanvasContext;
+  const format = "bgra8unorm";
+  context.configure({
+    device: device,
+    format: format,
+  });
+
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   const modelName = "DamagedHelmet";
@@ -94,11 +112,11 @@ async function main() {
     let vpMatrix = mat4.create();
     const vp = T3D.CreateViewProjection(
       true,
-      gpu.canvas.width / gpu.canvas.height
+      canvas.width / canvas.height
     );
     vpMatrix = vp.viewProjectionMatrix;
     let rotation = vec4.fromValues(0, 0, 0, 0);
-    let camera = createCamera(gpu.canvas, vp.cameraOption);
+    let camera = createCamera(canvas, vp.cameraOption);
 
     let eyePosition = new Float32Array(camera.eye.flat());
 
@@ -660,7 +678,7 @@ async function main() {
             entryPoint: "main",
             targets: [
               {
-                format: gpu.format as GPUTextureFormat,
+                format: format as GPUTextureFormat,
                 blend: {
                   color:
                     primitiveMaterial?.getAlphaMode() !== "BLEND"
@@ -724,7 +742,7 @@ async function main() {
 
     //render pass
     const depthTexture = device.createTexture({
-      size: [gpu.canvas.width, gpu.canvas.height, 1],
+      size: [canvas.width, canvas.height, 1],
       format: "depth24plus",
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
@@ -732,7 +750,7 @@ async function main() {
     const renderPassDescription = {
       colorAttachments: [
         {
-          view: gpu.context.getCurrentTexture().createView(),
+          view: context.getCurrentTexture().createView(),
           loadValue: [0.0, 0.0, 0.0, 1.0],
           storeOp: "store",
         },
@@ -784,7 +802,7 @@ async function main() {
         );
       }
 
-      renderPassDescription.colorAttachments[0].view = gpu.context
+      renderPassDescription.colorAttachments[0].view = context
         .getCurrentTexture()
         .createView();
       const commandEncoder = device.createCommandEncoder();

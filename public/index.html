@@ -36,9 +36,32 @@
         left: 20px;
         color: white;
       }
+
+      #id_webgpu{
+        position: absolute;
+        top: 23px;
+        left: 500px;
+        color: red;
+      }
+      .controls {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        z-index: 10;
+        color: white;
+      }
     </style>
   </head>
   <body>
+    <div class="controls">
+      <ul>
+        <li>Left mouse: Rotate</li>
+        <li>Shift + left mouse <b>or</b> scroll horizontal: Roll</li>
+        <li>Right mouse: Pan</li>
+        <li>Middle mouse <b>or</b> scroll vertical: Zoom</li>
+      </ul>
+    </div>
+    <div id="id_webgpu"></div>
     <span id="fps">--</span>
     <div id="mycontrols">
       glTF Models:

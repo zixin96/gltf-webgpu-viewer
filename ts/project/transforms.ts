@@ -1,6 +1,7 @@
 import { vec2, vec3, mat4, vec4, quat } from "gl-matrix";
 import { FOVY, NEAR_PLANE, FAR_PLANE } from "./config";
 
+
 var fps = document.getElementById("fps");
 var startTime = Date.now();
 var frame = 0;
@@ -9,24 +10,6 @@ export class Transforms {
   public static CameraPosition: vec3 = [2, 2, 4];
   public static LookDirection: vec3 = [0, 0, 0];
   public static UpDirection: vec3 = [0, 1, 0];
-
-  public static async InitWebGPU() {
-    const canvas = document.getElementById(
-      "canvas-webgpu"
-    ) as HTMLCanvasElement;
-    canvas.width = document.body.clientWidth;
-    canvas.height = document.body.clientHeight;
-    const adapter = await navigator.gpu?.requestAdapter();
-    const device = (await adapter?.requestDevice()) as GPUDevice;
-    const context = canvas.getContext("webgpu") as unknown as GPUCanvasContext;
-    const format = "bgra8unorm";
-    context.configure({
-      device: device,
-      format: format,
-    });
-
-    return { device, canvas, format, context };
-  }
 
   public static CreateGPUBuffer(
     device: GPUDevice,

@@ -1,7 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "start": "npm i && npm run vendor && npm run watch",
+    "start": "npm i && npm run vendor && npm run watchProd",
     "tsc": "tsc",
     "tscw": "tsc --watch",
     "vendor": "webpack --config webpack.config.vendor.js --mode production",

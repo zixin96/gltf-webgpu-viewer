@@ -104,7 +104,7 @@ To test out this project:
 1. Clone the repo
 2. Install NPM packages and Use Chrome Canary to open a localhost 
    ```sh
-   npm i
+   npm start
    ```
 
 <p align="right">(<a href="#top">back to top</a>)</p>
