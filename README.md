@@ -2,7 +2,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <img src="mdAssets/logo.png" alt="Logo" width="80" height="80">
+    <img src="mdAssets/logo.png" alt="Logo" width="150" height="150">
 
   <h1 align="center">glTF PBR Renderer - WebGPU</h1>
   <h2 align="center">Zixin Zhang</h2>
