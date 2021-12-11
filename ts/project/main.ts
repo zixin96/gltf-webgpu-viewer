@@ -1,14 +1,9 @@
 import {
-  Texture,
   WebIO,
-  TextureInfo,
-  Mesh,
   Accessor,
-  Primitive,
   Node,
 } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
-
 import { mat4, vec3, vec4 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
 import { Textures } from "./Textures";
@@ -29,14 +24,13 @@ async function main() {
   const device = gpu.device;
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
-  // const modelName = "2CylinderEngine";
-  const modelName = "DragonAttenuation";
+  const modelName = "DamagedHelmet";
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
 
-  const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
-  const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
+  const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/pbr.frag");
+  const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/primitive.vert");
 
   let pbrShader = pbrShaderRaw.default;
   let vertShader = vertShaderRaw.default;
@@ -50,8 +44,8 @@ async function main() {
       `https://agile-hamlet-83897.herokuapp.com/${uri}`
     );
     // reset the shaders before drawing new models
-    const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.fragz");
-    const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/zixin.vertz");
+    const pbrShaderRaw = require("raw-loader!glslify-loader!./shaders/pbr.frag");
+    const vertShaderRaw = require("raw-loader!glslify-loader!./shaders/primitive.vert");
 
     let pbrShader = pbrShaderRaw.default;
     let vertShader = vertShaderRaw.default;
@@ -159,7 +153,7 @@ async function main() {
         );
         if (volumnExt !== null) {
           // @ts-ignore
-          console.log(volumnExt.getThicknessTexture());
+          // console.log(volumnExt.getThicknessTexture());
         }
 
         let vertDefines = ["#version 310 es\n"];
@@ -319,7 +313,7 @@ async function main() {
             direction: [-0.5, -0.707, -0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -329,7 +323,7 @@ async function main() {
             direction: [0.5, 0.707, -0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -339,7 +333,7 @@ async function main() {
             direction: [0.5, -0.707, 0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -349,7 +343,7 @@ async function main() {
             direction: [-0.5, 0.707, 0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -359,7 +353,7 @@ async function main() {
             direction: [0.5, -0.707, -0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -369,7 +363,7 @@ async function main() {
             direction: [-0.5, 0.707, -0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -379,7 +373,7 @@ async function main() {
             direction: [-0.5, -0.707, 0.5],
             range: -1,
             color: [1, 1, 1],
-            intensity: 0.1,
+            intensity: 1.0,
             position: [0, 0, 0],
             innerConeCos: 1,
             outerConeCos: 0.707,
@@ -821,25 +815,3 @@ async function main() {
 }
 
 main();
-
-// const io = new WebIO();
-// const doc = await io.read(
-//   "https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/BoxTextured/glTF-Binary/BoxTextured.glb"
-// );
-
-// doc
-//   .getRoot()
-//   .listMeshes()
-//   .forEach((mesh) => {
-//     let testArray = mesh
-//       .listPrimitives()[0]
-//       .getAttribute("POSITION")
-//       ?.getElement(1, []);
-//     console.log(testArray);
-
-//     const tex = mesh.listPrimitives()[0].getMaterial()?.getBaseColorTexture();
-//     const texSize = tex?.getSize();
-//     const rawData = tex?.getImage() as Uint8ClampedArray;
-//     const imageD = new ImageData(rawData, texSize![0], texSize![1]);
-//     const imageBitmap = createImageBitmap(imageD);
-//   });
