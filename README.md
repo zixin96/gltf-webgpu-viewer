@@ -84,6 +84,10 @@ It was quite an adventure to explore this new API and implement something really
   - Boom Box With Axes ✅
   - TextureSettingsTest ✅
 
+### Extensions
+
+- KHR_lights_punctual ✅: 6 directional lights are used to light the scene. 
+
 ## Implementation Details
 
 The simplified structure of the project can be summarized using the following graph:
