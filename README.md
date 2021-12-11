@@ -2,9 +2,7 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-    <img src="mdAssets/logo.png" alt="Logo" width="150" height="150">
-
-  <h1 align="center">glTF PBR Renderer - WebGPU</h1>
+  <h1 align="center">glTF 2.0 PBR Renderer - WebGPU</h1>
   <h2 align="center">Zixin Zhang</h2>
   <h3 align="center">zixinzha@seas.upenn.edu</h3>
 </div>
