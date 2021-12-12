@@ -1,8 +1,4 @@
-import {
-  WebIO,
-  Accessor,
-  Node,
-} from "@gltf-transform/core";
+import { WebIO, Accessor, Node } from "@gltf-transform/core";
 import { KHRONOS_EXTENSIONS } from "@gltf-transform/extensions";
 import { mat4, vec3, vec4 } from "gl-matrix";
 import { Transforms as T3D } from "./transforms";
@@ -21,17 +17,16 @@ componentTypeMap.set(5125, "uint32");
 componentTypeMap.set(5126, "float32");
 
 async function main() {
-  const canvas = document.getElementById(
-    "canvas-webgpu"
-  ) as HTMLCanvasElement;
+  const canvas = document.getElementById("canvas-webgpu") as HTMLCanvasElement;
   canvas.width = document.body.clientWidth;
   canvas.height = document.body.clientHeight;
-  if (!navigator.gpu) {
+  const navGPU = navigator.gpu;
+  if (!navGPU) {
     let result = `Your current browser does not support WebGPU! Use Chrome/Edge Canary to open this page. See GitHub README for instructions.`;
     $("#id_webgpu").html(result);
     return;
   }
-  const adapter = await navigator.gpu?.requestAdapter();
+  const adapter = await navGPU?.requestAdapter();
   const device = (await adapter?.requestDevice()) as GPUDevice;
   const context = canvas.getContext("webgpu") as unknown as GPUCanvasContext;
   const format = "bgra8unorm";
@@ -43,6 +38,7 @@ async function main() {
   const glslang = (await glslangModule()) as any;
   const io = new WebIO().registerExtensions(KHRONOS_EXTENSIONS);
   const modelName = "DamagedHelmet";
+
   let doc = await io.read(
     `https://agile-hamlet-83897.herokuapp.com/https://github.com/KhronosGroup/glTF-Sample-Models/raw/master/2.0/${modelName}/glTF/${modelName}.gltf`
   );
@@ -110,21 +106,119 @@ async function main() {
 
     let vMatrix = mat4.create();
     let vpMatrix = mat4.create();
-    const vp = T3D.CreateViewProjection(
-      true,
-      canvas.width / canvas.height
-    );
+    const vp = T3D.CreateViewProjection(true, canvas.width / canvas.height);
     vpMatrix = vp.viewProjectionMatrix;
     let rotation = vec4.fromValues(0, 0, 0, 0);
     let camera = createCamera(canvas, vp.cameraOption);
 
     let eyePosition = new Float32Array(camera.eye.flat());
 
+    const defaultLights = [
+      {
+        direction: [0.5, 0.707, 0.49],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [-0.5, -0.707, -0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [0.5, 0.707, -0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [0.5, -0.707, 0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [-0.5, 0.707, 0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [0.5, -0.707, -0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [-0.5, 0.707, -0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+      {
+        direction: [-0.5, -0.707, 0.5],
+        range: -1,
+        color: [1, 1, 1],
+        intensity: 1.0,
+        position: [0, 0, 0],
+        innerConeCos: 1,
+        outerConeCos: 0.707,
+        type: 0,
+      },
+    ];
+    let lightArray = new Array();
+    for (let light of defaultLights) {
+      lightArray.push(...light.direction);
+      lightArray.push(light.range);
+      lightArray.push(...light.color);
+      lightArray.push(light.intensity);
+      lightArray.push(...light.position);
+      lightArray.push(light.innerConeCos);
+      lightArray.push(light.outerConeCos);
+      lightArray.push(light.type);
+      lightArray.push(0); // paddings
+      lightArray.push(0); // paddings
+    }
+    let lightUniformData = Float32Array.from(lightArray);
+    const fragmentUniformLightsBuffer = T3D.CreateGPUBuffer(
+      device,
+      lightUniformData,
+      GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+      "float32"
+    );
+
     async function drawNodeMesh(node: Node, primitiveInfos: any) {
       const mesh = node.getMesh();
       const meshWorldMatrix = new Float32Array(node.getWorldMatrix());
-
-      // assume there is a single primitive in the scene
 
       for (let p = 0; p < mesh!.listPrimitives().length; p++) {
         function createVertexBuffer(name: string, shaderLoc: number) {
@@ -314,109 +408,6 @@ async function main() {
           uniformMR2s,
           GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
           "int32"
-        );
-
-        const defaultLights = [
-          {
-            direction: [0.5, 0.707, 0.49],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [-0.5, -0.707, -0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [0.5, 0.707, -0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [0.5, -0.707, 0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [-0.5, 0.707, 0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [0.5, -0.707, -0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [-0.5, 0.707, -0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-          {
-            direction: [-0.5, -0.707, 0.5],
-            range: -1,
-            color: [1, 1, 1],
-            intensity: 1.0,
-            position: [0, 0, 0],
-            innerConeCos: 1,
-            outerConeCos: 0.707,
-            type: 0,
-          },
-        ];
-        let lightArray = new Array();
-        for (let light of defaultLights) {
-          lightArray.push(...light.direction);
-          lightArray.push(light.range);
-          lightArray.push(...light.color);
-          lightArray.push(light.intensity);
-          lightArray.push(...light.position);
-          lightArray.push(light.innerConeCos);
-          lightArray.push(light.outerConeCos);
-          lightArray.push(light.type);
-          lightArray.push(0); // paddings
-          lightArray.push(0); // paddings
-        }
-        let lightUniformData = Float32Array.from(lightArray);
-        const fragmentUniformLightsBuffer = T3D.CreateGPUBuffer(
-          device,
-          lightUniformData,
-          GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-          "float32"
         );
 
         const bindGroupLayout: GPUBindGroupEntry[] = [
