@@ -1478,9 +1478,10 @@ void main()
     g_finalColor.rgb = vec3(materialInfo.perceptualRoughness);
 #endif
 
+
 #if DEBUG == DEBUG_NORMAL
 #ifdef HAS_NORMAL_MAP
-    g_finalColor.rgb = texture(u_NormalSampler, getNormalUV()).rgb;
+    g_finalColor.rgb =texture(sampler2D(u_NormalData, u_NormalSampler), getNormalUV()).rgb;
 #else
     g_finalColor.rgb = vec3(0.5, 0.5, 1.0);
 #endif

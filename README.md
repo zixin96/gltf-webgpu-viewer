@@ -9,12 +9,14 @@
 
 <!-- ABOUT THE PROJECT -->
 
-[Live demo](https://gltf-webgpu.netlify.app/) Use Edge/Chrome Canary and enter the following to the address field: 
+[Live demo](https://gltf-webgpu.netlify.app/) Use Edge/Chrome Canary and enter the following to the address field:
 
-For Edge: 
+For Edge:
+
 - edge://flags/#enable-unsafe-webgpu
 
-For Chrome: 
+For Chrome:
+
 - Chrome://flags/#enable-unsafe-webgpu
 
 ## About The Project
@@ -27,7 +29,7 @@ WebGPU is an unreleased Javascript Graphics API with its own shading language ca
 
 This projects uses [glTF-Transform](https://github.com/donmccurdy/glTF-Transform), a glTF 2.0 SDK for TypeScript, to load glTF files from the web. With this SDK, we can easily query the data inside glTF without implementing the glTF loading structure from scratch.
 
-It was quite an adventure to explore this new API and implement something really cool 😎. 
+It was quite an adventure to explore this new API and implement something really cool 😎.
 
 ## Supported glTF Features
 
@@ -35,7 +37,7 @@ It was quite an adventure to explore this new API and implement something really
 
 ❗: partially supported (undesirable loading time)
 
-### Loading 
+### Loading
 
 - Loading glTF and glb files (supported by `gl-Transform`) ✅
 
@@ -43,26 +45,25 @@ It was quite an adventure to explore this new API and implement something really
 
 - Core glTF 2.0 Sample Models
 
-| Antique Camera✅ | Avocado✅ | Barramundi Fish✅ |
-|---|---|---|
-|![](mdAssets/AntiqueCamera.gif)|![](mdAssets/Avocado.gif)|![](mdAssets/BarramundiFish.gif)|
+| Antique Camera✅                | Avocado✅                 | Barramundi Fish✅                |
+| ------------------------------- | ------------------------- | -------------------------------- |
+| ![](mdAssets/AntiqueCamera.gif) | ![](mdAssets/Avocado.gif) | ![](mdAssets/BarramundiFish.gif) |
 
-| Boom Box✅ | Corset✅ | Damaged Helmet✅ |
-|---|---|---|
-|![](mdAssets/BoomBox.gif)|![](mdAssets/Corset.gif)|![](mdAssets/DamagedHelmet.gif)|
+| Boom Box✅                | Corset✅                 | Damaged Helmet✅                |
+| ------------------------- | ------------------------ | ------------------------------- |
+| ![](mdAssets/BoomBox.gif) | ![](mdAssets/Corset.gif) | ![](mdAssets/DamagedHelmet.gif) |
 
-| Flight Helmet✅ | Lantern✅ | Sci Fi Helmet✅ |
-|---|---|---|
-|![](mdAssets/FlightHelmet.gif)|![](mdAssets/Lantern.gif)|![](mdAssets/SciFiHelmet.gif)|
+| Flight Helmet✅                | Lantern✅                 | Sci Fi Helmet✅               |
+| ------------------------------ | ------------------------- | ----------------------------- |
+| ![](mdAssets/FlightHelmet.gif) | ![](mdAssets/Lantern.gif) | ![](mdAssets/SciFiHelmet.gif) |
 
-|  Suzanne✅ | Water Bottle✅ | 
-|---|---|
-|![](mdAssets/Suzanne.gif)|![](mdAssets/WaterBottle.gif)|
-
+| Suzanne✅                 | Water Bottle✅                |
+| ------------------------- | ----------------------------- |
+| ![](mdAssets/Suzanne.gif) | ![](mdAssets/WaterBottle.gif) |
 
 ### Standard
 
-- Standard glTF 2.0 Sample Models 
+- Standard glTF 2.0 Sample Models
   - Box ✅
   - Box Interleaved✅
   - Box Textured✅
@@ -80,33 +81,42 @@ It was quite an adventure to explore this new API and implement something really
 
 ### Feature Tests
 
-- Feature Tests glTF 2.0 Sample Models 
+- Feature Tests glTF 2.0 Sample Models
   - Boom Box With Axes ✅
   - TextureSettingsTest ✅
 
 ### Extensions
 
-- KHR_lights_punctual ✅: 6 directional lights are used to light the scene. 
+- KHR_lights_punctual ✅: 6 directional lights are used to light the scene.
 
 ## Implementation Details
 
 The simplified structure of the project can be summarized using the following graph:
 
 <div align="center">
-    <img src="mdAssets/structure.png" alt="Structure">
+    <img src="mdAssets/project.png" alt="Structure">
 <h8 align="center">Figure 1: Simplified Structure</h8>
 </div>
 
-Only a single set of vertex and fragment shader is used. The functionality of the shaders is determined by `#define` preprocessor. These `#define`s are dynamically generated and inserted into the shaders. This is very similar to the shader architecture used in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) by KhronosGroup. Shaders used in WebGL cannot be used directly in the WebGPU pipeline. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. The rest of the job is to carefully pass glTF data into the pipeline. Since primitives in a glTF file may use different shader programs, we need to use multiple pipelines to render multiple objects on the scene. 
+`gl-Transform` provides an easy-to-use interface (such as `Doc`, `Root`, `Node`, etc.) to access the data from glTF files. Only a single set of vertex and fragment shader is used. The functionality of the shaders is determined by `#define` preprocessor. These `#define`s are dynamically generated and inserted into the shaders. This is very similar to the shader architecture used in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) by KhronosGroup.
+
+It is interesting to note that shaders used in WebGL cannot be used directly in the WebGPU pipeline, mostly due to the different uses of uniforms and textures. A comparison between GLSL, WGSL, and GLSL(WebGL) is shown below:
+
+<div align="center">
+    <img src="mdAssets/shader.png" alt="Shader">
+<h8 align="center">Figure 2: Shader Languages Comparison</h8>
+</div>
+
+Major modifications will be needed to convert shaders used in WebGL. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. The rest of the job is to carefully pass glTF data into the pipeline. Since primitives in a glTF file may use different shader programs, we need to use multiple pipelines to render multiple objects on the scene.
 
 <!-- GETTING STARTED -->
 
 ## Getting Started
 
-To test out this project: 
+To test out this project:
 
 1. Clone the repo
-2. Install NPM packages and Use Chrome Canary to open a localhost 
+2. Install NPM packages and Use Chrome Canary to open a localhost
    ```sh
    npm start
    ```
@@ -117,8 +127,19 @@ To test out this project:
 
 ## Limitations
 
-- My original intention to use GLSL is that I can study and reuse most of the shader codes in [glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer). However, adding an extra layer of conversion means that models with lots of primitives/meshes are loaded very slowly since the renderer creates and converts shaders per primitive. This is one of the disadvantages of using GLSL as the shading language.
-- Most of the rendering codes are squeezed into a single file. Also, there are some obvious opportunities for refactoring due to my initial unfamiliarity with WebGPU. My future plan is to make the renderer more object-oriented for readability and refactor some repeating code to following [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) principle. 
+- There are two reasons why I choose to use GLSL in this project:
+
+1. GLSL sits in the middle of the complexity diagram. It grants you more control over the rendering pipeline, but is less verbose than WGSL.
+2. GLSL can be manually converted to WGSL, without modifying the renderer code (since they all use the same concepts like binding and grouping).
+
+However, adding an extra layer of conversion means that models with lots of primitives/meshes are loaded very slowly since the renderer creates and converts shaders per primitive. This is one of the disadvantages of using GLSL as the shading language.
+
+<div align="center">
+    <img src="mdAssets/glsl.png" alt="glsl">
+<h8 align="center">Figure 3: GLSL Issue</h8>
+</div>
+
+- Most of the rendering codes are squeezed into a single file. Also, there are some obvious opportunities for refactoring due to my initial unfamiliarity with WebGPU. My future plan is to make the renderer more object-oriented for readability and refactor some repeating code to follow [DRY](https://en.wikipedia.org/wiki/Don%27t_repeat_yourself) principle.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -135,21 +156,19 @@ To test out this project:
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
-
 <!-- ACKNOWLEDGMENTS -->
 
 ## Acknowledgments
 
-Thank you for all the authors below for making this project possible. 
+Thank you for all the authors below for making this project possible.
 
-- [KhronosGroup/glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) for providing a wonderful place to study glTF renderer. Importantly, the shader source codes are derived from this project. 
-- [glTF-Transform by Don McCurdy](https://gltf-transform.donmccurdy.com/) for providing an easy-to-use SDK for loading and reading glTF files. 
+- [KhronosGroup/glTF-Sample-Viewer](https://github.com/KhronosGroup/glTF-Sample-Viewer) for providing a wonderful place to study glTF renderer. Importantly, the shader source codes are derived from this project.
+- [glTF-Transform by Don McCurdy](https://gltf-transform.donmccurdy.com/) for providing an easy-to-use SDK for loading and reading glTF files.
 - [kainino0x/glslang](https://github.com/kainino0x/glslang.js) for providing a way to use GLSL shaders in WebGPU.
 - [mikolalysenko/3d-view-controls](https://github.com/mikolalysenko/3d-view-controls) for providing a user-friendly camera system.
-- [Practical WebGPU Graphics by Jack Xu, PhD](https://drxudotnet.com/Home/DownloadCode?bookId=20) for introducing me to the world of WebGPU and providing the base code for this project. 
-- [The Complete JavaScript Course 2022: From Zero to Expert! by Jonas Schmedtmann](https://www.udemy.com/course/the-complete-javascript-course/) for teaching me what "async/await" means and the fundamental of Javascript. Highly recommend this course! 
-- [Understanding TypeScript - 2022 Edition by Maximilian Schwarzmüller](https://www.udemy.com/course/understanding-typescript/) for teaching me those finer details about Typescript. 
-
+- [Practical WebGPU Graphics by Jack Xu, PhD](https://drxudotnet.com/Home/DownloadCode?bookId=20) for introducing me to the world of WebGPU and providing the base code for this project.
+- [The Complete JavaScript Course 2022: From Zero to Expert! by Jonas Schmedtmann](https://www.udemy.com/course/the-complete-javascript-course/) for teaching me what "async/await" means and the fundamental of Javascript. Highly recommend this course!
+- [Understanding TypeScript - 2022 Edition by Maximilian Schwarzmüller](https://www.udemy.com/course/understanding-typescript/) for teaching me those finer details about Typescript.
 
 <p align="right">(<a href="#top">back to top</a>)</p>
 
@@ -159,4 +178,4 @@ Thank you for all the authors below for making this project possible.
 - Need at least #version 310 es to use glslang
 - Existing shaders in Khronos are NOT compatible with WebGPU. To make it work, we need to add layout and non-opaque uniforms.
 - The Map object holds key-value pairs and remembers the original insertion order of the keys.
-- `Number of entries (3) did not match the number of entries (1) specified in [BindGroupLayout]` If we declare uniform in the shader, we need to use them in the main() function. 
+- `Number of entries (3) did not match the number of entries (1) specified in [BindGroupLayout]` If we declare uniform in the shader, we need to use them in the main() function.
