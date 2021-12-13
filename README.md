@@ -107,7 +107,7 @@ It is interesting to note that shaders used in WebGL cannot be used directly in 
 <h8 align="center">Figure 2: Shader Languages Comparison</h8>
 </div>
 
-Major modifications will be needed to convert shaders used in WebGL. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. The rest of the job is to carefully pass glTF data into the pipeline. Since primitives in a glTF file may use different shader programs, we need to use multiple pipelines to render multiple objects on the scene.
+Major modifications will be needed to convert shaders used in WebGL to those in WebGPU. All uniforms need to be put in the uniform block and assigned a layout and binding, and all samplers are replaced by pairs of `texture` and `sampler`. The rest of the job is to carefully pass glTF data into the pipeline. Since primitives in a glTF file may use different shader programs, we need to use multiple pipelines to render multiple objects on the scene.
 
 <!-- GETTING STARTED -->
 
